@@ -1,0 +1,18 @@
+# 只上传代码，不上传依赖/数据/备份
+
+# python venv（必须忽略，否则 7.5GB）
+backend/.venv/
+
+# 数据目录（你明确不上传）
+backend/data/
+
+# 备份目录（9.5GB，必须忽略）
+backend.bak.bak/
+
+# 运行产物
+*.pid
+__pycache__/
+*.pyc
+
+# secrets（建议）
+backend/.env

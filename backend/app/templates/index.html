@@ -1,0 +1,1269 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>考研辅导 RAG 智能问答</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <link rel="stylesheet" href="/static/css/app.css?v=3" />
+  <style>
+    /* 优化markdown列表行距 */
+    .message-content ul, .message-content ol {
+      margin: 0.25rem 0 !important;
+      line-height: 1.4 !important;
+    }
+    .message-content li {
+      margin: 0.125rem 0 !important;
+    }
+    /* 习题生成加载占位样式 */
+    .quiz-loading-card {
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .quiz-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #fed7aa;
+      border-top-color: #f97316;
+      border-radius: 9999px;
+    }
+    /* 加载动画 */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+    
+    /* 响应式布局样式 */
+    .layout-container {
+      display: flex;
+      gap: 0.5rem;
+      min-height: 0;
+      flex: 1;
+      max-width: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    
+    .layout-section {
+      display: flex;
+      flex-direction: column;
+      min-width: 200px;
+      flex: 0 0 auto;
+    }
+    
+    /* 左卡片固定宽度不变 */
+    [data-section="sessions"] {
+      flex-basis: 200px;
+      flex-shrink: 0;
+      flex-grow: 0;
+    }
+    
+    /* 右卡片固定宽度不变 */
+    [data-section="quiz"] {
+      flex-basis: 240px;
+      flex-shrink: 0;
+      flex-grow: 0;
+    }
+    
+    /* 中卡片自动伸缩 */
+    [data-section="chat"] {
+      flex: 1 1 0;
+      min-width: 200px;
+      flex-basis: 0;
+    }
+    
+    .layout-section.collapsed {
+      min-width: 40px;
+      padding: 0.5rem 0 !important;
+    }
+    
+    .layout-section.collapsed .section-content {
+      display: none;
+    }
+    
+    .layout-section.collapsed .section-header {
+      flex-direction: column;
+      writing-mode: horizontal-tb;
+      margin-bottom: 0;
+      align-items: center;
+      gap: 1rem;
+      padding-top: 0.5rem;
+    }
+    
+    .layout-section.collapsed .section-header > div,
+    .layout-section.collapsed .section-header > button:not(.collapse-btn) {
+      writing-mode: vertical-lr;
+      text-orientation: mixed;
+      flex: none;
+    }
+    
+    /* 左侧卡片折叠时按钮旋转 */
+    [data-section="sessions"].collapsed .collapse-btn {
+      transform: rotate(180deg);
+    }
+    
+    /* 右侧卡片折叠时按钮旋转 */
+    [data-section="quiz"].collapsed .collapse-btn {
+      transform: rotate(180deg);
+    }
+    
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-shrink: 0;
+      margin-bottom: 0.75rem;
+    }
+    
+    .collapse-btn {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #999;
+      transition: color 0.2s;
+      padding: 0;
+      border: none;
+      background: none;
+      font-size: 14px;
+    }
+    
+    .collapse-btn:hover {
+      color: #f97316;
+    }
+    
+    .section-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    
+    .resize-handle {
+      width: 4px;
+      cursor: col-resize;
+      background: #e5e7eb;
+      transition: background 0.2s;
+      border-radius: 2px;
+      flex-shrink: 1;
+    }
+    
+    .resize-handle:hover,
+    .resize-handle.dragging {
+      background: #f97316;
+    }
+    
+    .layout-section.collapsed + .resize-handle {
+      display: none;
+    }
+    
+    /* 通过JS添加的隐藏类，兼容右侧面板折叠时的前一分界线隐藏 */
+    .resize-handle.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body class="h-screen overflow-hidden">
+  <div class="h-full flex flex-col px-4 py-3">
+    <header class="flex items-center justify-between gap-4 mb-3">
+      <div>
+        <div class="text-2xl font-semibold">考研辅导 RAG 智能问答</div>
+        <div class="text-sm text-gray-500">基于PDF资料检索 + Qwen 流式生成 + 练习题与错题本</div>
+      </div>
+      <div class="flex items-center gap-3">
+        <img id="avatar" class="w-10 h-10 rounded-full border" src="/static/img/default_avatar.svg" />
+        <div class="text-sm">
+          <div id="username" class="font-medium">未登录</div>
+          <button id="btnLogout" class="text-orange-600 hidden">退出</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 layout-container min-h-0">
+      <!-- 左：会话列表 -->
+      <section class="chatbox layout-section p-4" data-section="sessions">
+        <div class="section-header">
+          <button class="collapse-btn" data-toggle="sessions" title="展开/收起">◀</button>
+          <div class="font-semibold flex-1">会话列表</div>
+          <button id="btnNewSession" class="text-sm text-orange-600 font-medium">新建</button>
+        </div>
+        <div class="section-content">
+          <div id="sessionList" class="space-y-2 overflow-auto grow pr-1"></div>
+        </div>
+      </section>
+      
+      <div class="resize-handle" data-resize="between-sessions-chat"></div>
+
+      <!-- 中：对话记录 -->
+      <section class="chatbox layout-section p-4" data-section="chat">
+        <div class="section-header">
+          <div class="font-semibold flex-1">对话</div>
+          <button id="btnWrongbook" class="text-sm text-orange-700 underline">错题本</button>
+        </div>
+        <div class="section-content">
+          <div id="chatArea" class="space-y-3 overflow-auto grow pr-2"></div>
+          <div id="sources" class="mt-2 text-xs text-gray-500 border-t pt-2"></div>
+          <div class="mt-3 flex gap-2 items-end">
+            <textarea id="q" class="flex-1 border rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-inset resize-none overflow-hidden"
+              placeholder="输入你的问题（例如：进程与线程区别？死锁的四个必要条件？）" rows="1" style="line-height: 1.5; min-height: 42px; max-height: 200px;"></textarea>
+            <button id="btnAsk" class="px-5 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors flex items-center justify-center flex-shrink-0" style="height: 48px; width: 60px;">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <div class="resize-handle" data-resize="between-chat-quiz"></div>
+
+      <!-- 右：练习题 -->
+      <section class="chatbox layout-section p-4" data-section="quiz">
+        <div class="section-header">
+          <button class="collapse-btn" data-toggle="quiz" title="展开/收起">▶</button>
+          <div class="font-semibold flex-1">练习题</div>
+          <button id="btnClearAnswers" class="text-xs text-orange-600 hidden">清空答案</button>
+        </div>
+        <div class="section-content">
+          <div id="quizBox" class="text-sm text-gray-700 overflow-auto grow space-y-4">
+            <div class="text-center text-gray-400">暂无练习题（先提问生成）</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 登录/注册弹窗 -->
+  <div id="authModal" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+    <div class="chatbox w-full max-w-md p-5">
+      <div class="text-xl font-semibold">登录 / 注册</div>
+      <div class="text-sm text-gray-500 mt-1">用户名支持中英文/数字/特殊字符；密码必须为6位数字</div>
+
+      <div class="mt-4 space-y-2">
+        <input id="inUser" class="w-full border rounded-xl p-3" placeholder="用户名" />
+        <input id="inPwd"  class="w-full border rounded-xl p-3" placeholder="6位数字密码" />
+      </div>
+
+      <div class="mt-4 flex gap-2">
+        <button id="btnLogin" class="flex-1 px-4 py-2 rounded-xl bg-orange-500 text-white font-medium">登录</button>
+        <button id="btnReg" class="flex-1 px-4 py-2 rounded-xl border border-orange-300 text-orange-700 font-medium">注册</button>
+      </div>
+
+      <div class="mt-4">
+        <div class="text-sm font-medium">头像（可选）</div>
+        <input id="inAvatar" type="file" accept="image/png,image/jpeg,image/webp" class="mt-2"/>
+        <div class="text-xs text-gray-500 mt-1">不上传则使用默认白色头像</div>
+      </div>
+
+      <div id="authErr" class="mt-3 text-sm text-red-600"></div>
+    </div>
+  </div>
+
+  <!-- 错题本弹窗 -->
+  <div id="wrongModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
+    <div class="chatbox w-full max-w-2xl p-5">
+      <div class="flex items-center justify-between">
+        <div class="text-xl font-semibold">错题本</div>
+        <button id="btnCloseWrong" class="text-gray-500">关闭</button>
+      </div>
+      <div id="wrongList" class="mt-3 space-y-3 max-h-[70vh] overflow-auto"></div>
+    </div>
+  </div>
+
+<script>
+let TOKEN = localStorage.getItem("token") || "";
+let USER = JSON.parse(localStorage.getItem("user") || "null");
+let SESSION_ID = localStorage.getItem("session_id") || "";
+let SESSIONS = [];
+let EXERCISES = [];  // 保存当前会话的所有习题
+let ES = null;
+let QUIZ_LOADING = false; // 习题生成中的标记
+let PENDING_EXERCISE = false; // 是否等待新习题
+let LAST_EXERCISE_COUNT = 0; // 上次记录的习题数量
+
+// ==================== 响应式布局管理 ====================
+class LayoutManager {
+  constructor() {
+    this.container = document.querySelector('.layout-container');
+    this.handles = Array.from(document.querySelectorAll('.resize-handle'));
+    this.panels = Array.from(this.container.querySelectorAll('.layout-section'));
+    // 名称到索引的映射，仅用于折叠按钮，不参与尺寸计算
+    this.panelIndexByName = {};
+    this.panels.forEach((p, i) => {
+      const name = p.getAttribute('data-section');
+      if (name) this.panelIndexByName[name] = i;
+    });
+    this.layoutState = this.loadLayout();
+    this.init();
+  }
+
+  init() {
+    this.applyLayout();
+
+    // 绑定拖拽事件（按位置调整相邻两个面板，不依赖名称）
+    this.handles.forEach((handle, index) => {
+      handle.addEventListener('mousedown', (e) => this.startResize(e, index));
+    });
+
+    // 展开/收起按钮（仅通过名称找到对应索引）
+    document.querySelectorAll('.collapse-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.toggleCollapse(e));
+    });
+
+    // 窗口尺寸变化时，确保总宽度适配容器，优先收缩可增长的面板（flexGrow>0）
+    window.addEventListener('resize', () => {
+      const containerWidth = this.container.offsetWidth;
+      const gapPx = parseFloat(getComputedStyle(this.container).gap || '8');
+      const gaps = Math.max(0, this.panels.length - 1) * gapPx;
+      const totalPanels = this.panels.reduce((sum, p) => sum + p.offsetWidth, 0);
+      const available = containerWidth - gaps;
+
+      if (totalPanels > available) {
+        // 找到可增长的面板（通常是中间的 chat），不依赖名称
+        const growIndex = this.panels.findIndex(p => parseFloat(getComputedStyle(p).flexGrow || '0') > 0);
+        if (growIndex >= 0) {
+          const fixedTotal = this.panels.reduce((sum, p, i) => {
+            if (i === growIndex) return sum;
+            return sum + p.offsetWidth;
+          }, 0);
+          const minGrow = parseFloat(getComputedStyle(this.panels[growIndex]).minWidth || '200');
+          const newGrow = Math.max(minGrow, available - fixedTotal);
+          this.panels[growIndex].style.flexBasis = newGrow + 'px';
+        }
+      }
+
+      this.saveLayout();
+    });
+  }
+
+  startResize(e, handleIndex) {
+    e.preventDefault();
+    const handle = e.target;
+    const startX = e.clientX;
+
+    // 计算相邻两个面板索引：handle 位于 panels[handleIndex] 和 panels[handleIndex+1] 之间
+    const leftPanel = this.panels[handleIndex];
+    const rightPanel = this.panels[handleIndex + 1];
+    if (!leftPanel || !rightPanel) return;
+
+    const startLeftWidth = leftPanel.offsetWidth;
+    const startRightWidth = rightPanel.offsetWidth;
+    const totalWidth = startLeftWidth + startRightWidth;
+    const minLeft = parseFloat(getComputedStyle(leftPanel).minWidth || '200');
+    const minRight = parseFloat(getComputedStyle(rightPanel).minWidth || '200');
+
+    handle.classList.add('dragging');
+
+    const onMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+
+      // 新宽度仅由相对位置决定，不依赖卡片名称
+      const proposedLeft = startLeftWidth + deltaX;
+      const newLeft = Math.max(minLeft, Math.min(totalWidth - minRight, proposedLeft));
+      const newRight = totalWidth - newLeft;
+
+      leftPanel.style.flexBasis = newLeft + 'px';
+      rightPanel.style.flexBasis = newRight + 'px';
+    };
+
+    const onMouseUp = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      this.saveLayout();
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  toggleCollapse(e) {
+    const btn = e.target;
+    const sectionName = btn.getAttribute('data-toggle');
+    const index = this.panelIndexByName[sectionName];
+    if (index === undefined) return;
+    const panel = this.panels[index];
+
+    const willCollapse = !panel.classList.contains('collapsed');
+    if (willCollapse) {
+      // 保存当前宽度以便展开时恢复
+      const currentBasis = panel.style.flexBasis && panel.style.flexBasis !== 'auto' ? panel.style.flexBasis : (panel.offsetWidth + 'px');
+      if (!this.prevBasis) this.prevBasis = new Array(this.panels.length).fill(null);
+      this.prevBasis[index] = currentBasis;
+
+      panel.classList.add('collapsed');
+
+      // 设置为最小宽度
+      const minW = parseFloat(getComputedStyle(panel).minWidth || '40');
+      panel.style.flexBasis = minW + 'px';
+
+      // 隐藏相邻分界线：左侧隐藏第0个，右侧隐藏最后一个
+      if (index === 0) {
+        const h = this.handles[0];
+        if (h) h.classList.add('hidden');
+      } else if (index === this.panels.length - 1) {
+        const h = this.handles[this.handles.length - 1];
+        if (h) h.classList.add('hidden');
+      }
+    } else {
+      // 取消折叠，恢复宽度
+      panel.classList.remove('collapsed');
+      const prev = this.prevBasis && this.prevBasis[index];
+      if (prev) {
+        panel.style.flexBasis = prev;
+        this.prevBasis[index] = null;
+      } else {
+        panel.style.flexBasis = panel.offsetWidth + 'px';
+      }
+
+      // 显示相邻分界线
+      if (index === 0) {
+        const h = this.handles[0];
+        if (h) h.classList.remove('hidden');
+      } else if (index === this.panels.length - 1) {
+        const h = this.handles[this.handles.length - 1];
+        if (h) h.classList.remove('hidden');
+      }
+    }
+
+    // 同步存储
+    this.layoutState.collapsed = Array.isArray(this.layoutState.collapsed) ? this.layoutState.collapsed : new Array(this.panels.length).fill(false);
+    this.layoutState.collapsed[index] = panel.classList.contains('collapsed');
+    this.saveLayout();
+  }
+
+  applyLayout() {
+    // 应用宽度（按位置存储）
+    if (Array.isArray(this.layoutState.flexBasis) && this.layoutState.flexBasis.length === this.panels.length) {
+      this.panels.forEach((p, i) => {
+        const basis = this.layoutState.flexBasis[i];
+        if (basis) p.style.flexBasis = basis;
+      });
+    }
+
+    // 应用折叠状态（按位置）
+    if (Array.isArray(this.layoutState.collapsed) && this.layoutState.collapsed.length === this.panels.length) {
+      this.panels.forEach((p, i) => {
+        if (this.layoutState.collapsed[i]) p.classList.add('collapsed');
+        else p.classList.remove('collapsed');
+      });
+
+      // 根据折叠状态隐藏相邻分界线
+      const leftCollapsed = this.layoutState.collapsed[0];
+      const rightCollapsed = this.layoutState.collapsed[this.panels.length - 1];
+      if (this.handles[0]) {
+        if (leftCollapsed) this.handles[0].classList.add('hidden');
+        else this.handles[0].classList.remove('hidden');
+      }
+      if (this.handles[this.handles.length - 1]) {
+        if (rightCollapsed) this.handles[this.handles.length - 1].classList.add('hidden');
+        else this.handles[this.handles.length - 1].classList.remove('hidden');
+      }
+    }
+  }
+
+  saveLayout() {
+    // 保存所有面板的 flex-basis（像素值，位置驱动）
+    this.layoutState.flexBasis = this.panels.map((p) => {
+      const basis = p.style.flexBasis;
+      if (basis && basis !== 'auto') return basis;
+      return p.offsetWidth + 'px';
+    });
+
+    // 保存折叠状态（位置驱动）
+    this.layoutState.collapsed = this.panels.map(p => p.classList.contains('collapsed'));
+
+    localStorage.setItem('layoutState', JSON.stringify(this.layoutState));
+  }
+
+  loadLayout() {
+    const saved = localStorage.getItem('layoutState');
+    return saved ? JSON.parse(saved) : {};
+  }
+}
+
+let layoutManager;
+
+// 渲染数学公式
+function renderMath(element) {
+  if (window.renderMathInElement) {
+    renderMathInElement(element, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\[', right: '\\]', display: true},
+        {left: '\\(', right: '\\)', display: false}
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+// 习题加载占位：避免重复创建
+function showQuizLoading() {
+  const box = document.getElementById("quizBox");
+  if (!box || document.getElementById("quiz-loading-placeholder")) return;
+  QUIZ_LOADING = true;
+  PENDING_EXERCISE = true;
+  const loadingDiv = document.createElement("div");
+  loadingDiv.id = "quiz-loading-placeholder";
+  loadingDiv.className = "quiz-loading-card";
+  loadingDiv.innerHTML = `
+    <div class="quiz-spinner animate-spin"></div>
+    <div class="text-sm text-gray-500">大模型回复中</div>
+  `;
+  // 去掉空提示，避免与加载提示并存
+  const emptyMsg = box.querySelector('.text-gray-400');
+  if (emptyMsg) emptyMsg.remove();
+  box.appendChild(loadingDiv);
+  box.scrollTop = box.scrollHeight;
+}
+
+// 输入框动态高度调整
+function autoResizeTextarea(textarea) {
+  textarea.style.height = 'auto';
+  const newHeight = Math.min(textarea.scrollHeight, 200); // 最大高度200px
+  textarea.style.height = newHeight + 'px';
+}
+
+function showAuth(show){
+  document.getElementById("authModal").style.display = show ? "flex" : "none";
+}
+
+function setUser(u, token){
+  USER = u;
+  TOKEN = token;
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(u));
+  document.getElementById("username").innerText = u.username;
+  document.getElementById("avatar").src = u.avatar || "/static/img/default_avatar.svg";
+  document.getElementById("btnLogout").classList.remove("hidden");
+  showAuth(false);
+}
+
+async function api(path, method="GET", body=null, isForm=false){
+  const opt = { method, headers:{} };
+  if(body){
+    if(isForm){ opt.body = body; }
+    else { opt.headers["Content-Type"]="application/json"; opt.body = JSON.stringify(body); }
+  }
+  const url = path.includes("?") ? `${path}&token=${encodeURIComponent(TOKEN)}` : `${path}?token=${encodeURIComponent(TOKEN)}`;
+  const res = await fetch(url, opt);
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.detail || "请求失败");
+  return data;
+}
+
+function addBubble(areaId, role, text){
+  const el = document.createElement("div");
+  el.className = "bubble " + (role === "assistant" ? "assistant" : "user");
+  el.innerText = text;
+  document.getElementById(areaId).appendChild(el);
+  document.getElementById(areaId).scrollTop = 1e9;
+  return el;
+}
+
+async function loadSessions(){
+  try{
+    SESSIONS = await api("/api/sessions");
+    const list = document.getElementById("sessionList");
+    list.innerHTML = "";
+    
+    // 按最后更新时间倒序排列
+    SESSIONS.sort((a, b) => b.updated_at - a.updated_at);
+    
+    SESSIONS.forEach(s => {
+      const itemWrapper = document.createElement("div");
+      itemWrapper.className = "relative group";
+      
+      const item = document.createElement("div");
+      item.className = `p-3 rounded-lg cursor-pointer border transition-all ${
+        s.id === SESSION_ID 
+          ? "bg-orange-100 border-orange-400 font-medium" 
+          : "bg-white border-gray-200 hover:border-orange-300"
+      }`;
+      
+      const titleDiv = document.createElement("div");
+      titleDiv.className = "text-sm truncate";
+      titleDiv.innerText = s.title || "无标题";
+      
+      const timeDiv = document.createElement("div");
+      timeDiv.className = "text-xs text-gray-500 mt-1";
+      const date = new Date(s.updated_at * 1000);
+      timeDiv.innerText = date.toLocaleString('zh-CN');
+      
+      item.appendChild(titleDiv);
+      item.appendChild(timeDiv);
+      
+      item.onclick = (e) => {
+        if(e.target.closest('.btn-delete')) return;
+        switchSession(s.id);
+      };
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-delete absolute top-1 right-2 hidden group-hover:block text-gray-400 hover:text-red-500 text-lg";
+      deleteBtn.innerText = "✕";
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if(confirm(`确定删除会话 "${s.title || '无标题'}" 吗？`)){
+          await deleteSession(s.id);
+        }
+      };
+      
+      itemWrapper.appendChild(item);
+      itemWrapper.appendChild(deleteBtn);
+      list.appendChild(itemWrapper);
+    });
+  }catch(e){
+    console.error("加载会话列表失败:", e);
+  }
+}
+
+async function deleteSession(sessionId){
+  try{
+    await api(`/api/sessions/${sessionId}`, "DELETE");
+    if(SESSION_ID === sessionId){
+      SESSION_ID = "";
+      localStorage.removeItem("session_id");
+      await createNewSession();
+    }else{
+      await loadSessions();
+    }
+  }catch(e){
+    alert("删除会话失败: " + e.message);
+  }
+}
+
+async function switchSession(sessionId){
+  SESSION_ID = sessionId;
+  localStorage.setItem("session_id", SESSION_ID);
+  document.getElementById("q").value = "";
+  await loadSessions();
+  await loadHistory();
+  await loadQuiz();
+}
+
+async function createNewSession(){
+  try{
+    const sessionRes = await api("/api/sessions", "POST");
+    SESSION_ID = sessionRes.id;
+    localStorage.setItem("session_id", SESSION_ID);
+    await loadSessions();
+    await loadHistory();
+    await loadQuiz();
+  }catch(e){
+    alert("创建会话失败: " + e.message);
+  }
+}
+
+async function loadHistory(){
+  if(!SESSION_ID) return;
+  try{
+    const session = await api(`/api/sessions/${SESSION_ID}`);
+    const area = document.getElementById("chatArea");
+    area.innerHTML = "";
+    session.messages.forEach(m => {
+      addMessage(area, m.role, m.content, m.timestamp, m.sources);
+    });
+    area.scrollTop = 1e9;
+  }catch(e){
+    console.error("加载历史失败:", e);
+  }
+}
+
+function addMessage(container, role, content, timestamp, sources){
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `message-item message-${role}`;
+  
+  // 格式化时间
+  let timeStr = "";
+  let fullTimeStr = "";
+  if(timestamp){
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // 完整时间字符串
+    fullTimeStr = date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    
+    // 显示时间字符串
+    if(diffDays === 0){
+      // 今天：只显示时间
+      timeStr = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else if(diffDays === 1){
+      // 昨天
+      timeStr = "昨天 " + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else if(diffDays < 7){
+      // 一周内
+      timeStr = diffDays + "天前 " + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      // 更早：显示完整日期
+      timeStr = fullTimeStr;
+    }
+  }
+  
+  // 角色标签
+  const roleLabel = role === "assistant" ? "助手" : "你";
+  
+  // 消息头
+  const headerDiv = document.createElement("div");
+  headerDiv.className = "message-header";
+  headerDiv.innerHTML = `<span class="role-badge">${roleLabel}</span><span class="msg-time" title="${fullTimeStr}">${timeStr}</span>`;
+  
+  // 消息内容 - 使用marked渲染Markdown，清理连续换行
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "message-content";
+  // 清理连续的换行符（最多保留一个）
+  const cleanedContent = content.replace(/\n{2,}/g, '\n\n');
+  contentDiv.innerHTML = marked.parse(cleanedContent);
+  // 渲染数学公式
+  setTimeout(() => renderMath(contentDiv), 0);
+  
+  msgDiv.appendChild(headerDiv);
+  msgDiv.appendChild(contentDiv);
+  
+  // 如果有来源信息，纵向列举，去掉扩展名
+  if(sources && sources.length > 0 && role === "assistant"){
+    const sourcesDiv = document.createElement("div");
+    sourcesDiv.className = "message-sources";
+    sourcesDiv.innerHTML = "📚 知识来源：<ul class='source-list'>" + 
+      sources.map(s => {
+        const bookName = s.book.replace(/\.(pdf|PDF)$/, '');
+        return `<li>${bookName} - 第${s.page}页</li>`;
+      }).join("") + 
+      "</ul>";
+    msgDiv.appendChild(sourcesDiv);
+  }
+  
+  container.appendChild(msgDiv);
+  container.scrollTop = 1e9;
+}
+
+async function loadQuiz(){
+  if(!SESSION_ID) return;
+  try{
+    const session = await api(`/api/sessions/${SESSION_ID}`);
+    const exercises = session.exercises || [];
+    EXERCISES = exercises;  // 保存到全局变量
+    const box = document.getElementById("quizBox");
+    
+    if(exercises.length === 0){
+      box.innerHTML = '<div class="text-center text-gray-400">暂无练习题（先提问生成）</div>';
+      document.getElementById("btnClearAnswers").classList.add("hidden");
+      LAST_EXERCISE_COUNT = 0;
+      return;
+    }
+    
+    // 保存所有现有状态：选中答案、结果HTML、解析展开状态
+    const savedStates = {};
+    for(let i = 0; i < exercises.length; i++){
+      const quizItem = document.getElementById(`quiz-${i}`);
+      if(!quizItem) continue;
+      
+      const radio = document.querySelector(`input[name="quiz-${i}"]:checked`);
+      const resultDiv = document.getElementById(`quiz-result-${i}`);
+      
+      // 检查解析是否展开（查找explainContent元素）
+      const explainContent = resultDiv?.querySelector('.border-l-2');
+      const isExplainExpanded = explainContent && !explainContent.classList.contains('hidden');
+      
+      savedStates[i] = {
+        selectedAnswer: radio ? radio.value : null,
+        resultHTML: resultDiv ? resultDiv.innerHTML : '',
+        explainExpanded: isExplainExpanded
+      };
+    }
+    
+    // 清空容器重新渲染
+    box.innerHTML = "";
+    document.getElementById("btnClearAnswers").classList.remove("hidden");
+    
+    // 渲染所有习题
+    for(let index = 0; index < exercises.length; index++){
+      const ex = exercises[index];
+      const quizItem = document.createElement("div");
+      quizItem.className = "border rounded-lg p-3 space-y-2 bg-gray-50";
+      quizItem.id = `quiz-${index}`;
+      
+      // 题目号和难度
+      const titleDiv = document.createElement("div");
+      titleDiv.className = "flex items-center justify-between";
+      titleDiv.innerHTML = `<span class="font-medium text-sm">第${index + 1}题</span><span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">${ex.difficulty || '中等'}</span>`;
+      quizItem.appendChild(titleDiv);
+      
+      // 题目
+      const qDiv = document.createElement("div");
+      qDiv.className = "text-sm font-medium";
+      qDiv.innerText = ex.question || "";
+      quizItem.appendChild(qDiv);
+      
+      // 选项
+      if(ex.options && Array.isArray(ex.options)){
+        const optsDiv = document.createElement("div");
+        optsDiv.className = "space-y-2";
+        ex.options.forEach((opt, optIndex) => {
+          const label = document.createElement("label");
+          label.className = "flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition-colors";
+          
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = `quiz-${index}`;
+          radio.value = opt.charAt(0); // A, B, C, D
+          radio.className = "w-4 h-4";
+          // 恢复之前保存的答案
+          if(savedStates[index]?.selectedAnswer === opt.charAt(0)) radio.checked = true;
+          
+          const text = document.createElement("span");
+          text.className = "text-sm";
+          text.innerText = opt;
+          
+          label.appendChild(radio);
+          label.appendChild(text);
+          optsDiv.appendChild(label);
+        });
+        quizItem.appendChild(optsDiv);
+      }
+      
+      // 状态和按钮
+      const btnDiv = document.createElement("div");
+      btnDiv.className = "flex gap-2 mt-2";
+      
+      const submitBtn = document.createElement("button");
+      submitBtn.className = "flex-1 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm hover:bg-orange-600";
+      submitBtn.innerText = "提交";
+      submitBtn.onclick = () => submitQuizAnswer(index);
+      
+      const resultDiv = document.createElement("div");
+      resultDiv.id = `quiz-result-${index}`;
+      resultDiv.className = "text-sm";
+      
+      btnDiv.appendChild(submitBtn);
+      quizItem.appendChild(btnDiv);
+      quizItem.appendChild(resultDiv);
+      
+      box.appendChild(quizItem);
+      
+      // 恢复结果显示和解析展开状态
+      if(savedStates[index]?.resultHTML){
+        resultDiv.innerHTML = savedStates[index].resultHTML;
+        
+        // 延迟一帧后重新绑定事件，确保 DOM 已更新
+        requestAnimationFrame(() => {
+          const toggleBtn = resultDiv.querySelector('button');
+          const explainContent = resultDiv.querySelector('.border-l-2');
+          
+          if(toggleBtn && explainContent){
+            // 为按钮创建新的事件监听器（不使用 onclick 属性）
+            toggleBtn.replaceWith(toggleBtn.cloneNode(true));
+            const newToggleBtn = resultDiv.querySelector('button');
+            
+            if(newToggleBtn){
+              newToggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const content = resultDiv.querySelector('.border-l-2');
+                const btn = resultDiv.querySelector('button');
+                if(!content || !btn) return;
+                
+                const isHidden = content.classList.contains("hidden");
+                if(isHidden){
+                  content.classList.remove("hidden");
+                  btn.innerText = "📖 收起解析";
+                }else{
+                  content.classList.add("hidden");
+                  btn.innerText = "📖 展开解析";
+                }
+              });
+              
+              // 如果之前解析是展开的，保持展开
+              if(savedStates[index].explainExpanded){
+                explainContent.classList.remove('hidden');
+                newToggleBtn.innerText = '📖 收起解析';
+              }
+            }
+          }
+        });
+      }
+    }
+    
+    box.scrollTop = box.scrollHeight;
+    LAST_EXERCISE_COUNT = exercises.length;
+  }catch(e){
+    console.error("加载练习题失败:", e);
+  }
+}
+
+async function submitQuizAnswer(quizIndex){
+  const selected = document.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
+  if(!selected){
+    alert("请选择答案");
+    return;
+  }
+  
+  const userAnswer = selected.value;
+  const exercise = EXERCISES[quizIndex];  // 从全局变量读取
+  
+  if(!exercise){
+    alert("习题数据错误，请重新加载");
+    return;
+  }
+  
+  const resultDiv = document.getElementById(`quiz-result-${quizIndex}`);
+  const isCorrect = userAnswer === exercise.correct_answer;
+  
+  // 创建结果容器
+  const resultContainer = document.createElement("div");
+  resultContainer.className = "mt-2";
+  
+  // 结果标签
+  const resultLabel = document.createElement("div");
+  resultLabel.className = isCorrect 
+    ? "p-2 rounded bg-green-100 text-green-700" 
+    : "p-2 rounded bg-red-100 text-red-700";
+  resultLabel.innerText = isCorrect 
+    ? "✓ 答对了！" 
+    : `✗ 答错了，正确答案是 ${exercise.correct_answer}`;
+  resultContainer.appendChild(resultLabel);
+  
+  // 可折叠的解析
+  const explanationDiv = document.createElement("div");
+  explanationDiv.className = "mt-2";
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "w-full text-left p-2 rounded bg-blue-50 hover:bg-blue-100 text-sm font-medium text-blue-700 transition-colors";
+  toggleBtn.innerText = "📖 展开解析";
+  
+  const explainContent = document.createElement("div");
+  explainContent.className = "hidden mt-2 p-2 rounded bg-blue-50 text-sm border-l-2 border-blue-300";
+  explainContent.innerHTML = marked.parse(exercise.explanation || "暂无解析");
+  
+  toggleBtn.onclick = () => {
+    const isHidden = explainContent.classList.contains("hidden");
+    if(isHidden){
+      explainContent.classList.remove("hidden");
+      toggleBtn.innerText = "📖 收起解析";
+    }else{
+      explainContent.classList.add("hidden");
+      toggleBtn.innerText = "📖 展开解析";
+    }
+  };
+  
+  explanationDiv.appendChild(toggleBtn);
+  explanationDiv.appendChild(explainContent);
+  resultContainer.appendChild(explanationDiv);
+  
+  resultDiv.innerHTML = "";
+  resultDiv.appendChild(resultContainer);
+}
+
+async function loginOrRegister(kind){
+  const username = document.getElementById("inUser").value;
+  const password = document.getElementById("inPwd").value;
+  document.getElementById("authErr").innerText = "";
+
+  try{
+    const path = kind === "login" ? "/api/login" : "/api/register";
+    const res = await fetch(path, {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || "失败");
+
+    setUser(data.user, data.token);
+
+    // 上传头像（可选）
+    const f = document.getElementById("inAvatar").files[0];
+    if(f){
+      const fd = new FormData();
+      fd.append("file", f);
+      const up = await fetch(`/api/avatar?token=${encodeURIComponent(TOKEN)}`, {method:"POST", body: fd});
+      const ud = await up.json();
+      if(up.ok){
+        USER.avatar = ud.avatar;
+        localStorage.setItem("user", JSON.stringify(USER));
+        document.getElementById("avatar").src = USER.avatar;
+      }
+    }
+
+    // 创建新会话
+    const sessionRes = await api("/api/sessions", "POST");
+    SESSION_ID = sessionRes.id;
+    localStorage.setItem("session_id", SESSION_ID);
+
+    await loadSessions();
+    await loadHistory();
+    await loadQuiz();
+  }catch(e){
+    document.getElementById("authErr").innerText = e.message;
+  }
+}
+
+function startStream(question){
+  if(ES) ES.close();
+  document.getElementById("sources").innerText = "";
+
+  const chatArea = document.getElementById("chatArea");
+  
+  // 添加用户消息
+  const userMsg = { role: "user", content: question, timestamp: Math.floor(Date.now() / 1000) };
+  addMessage(chatArea, userMsg.role, userMsg.content, userMsg.timestamp);
+
+  // 添加助手消息占位符
+  const assistantDiv = document.createElement("div");
+  assistantDiv.className = "message-item message-assistant";
+  assistantDiv.id = "current-message";
+  
+  const headerDiv = document.createElement("div");
+  headerDiv.className = "message-header";
+  const date = new Date();
+  const timeStr = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const fullTimeStr = date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  headerDiv.innerHTML = `<span class="role-badge">助手</span><span class="msg-time" title="${fullTimeStr}">${timeStr}</span>`;
+  
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "message-content";
+  contentDiv.id = "current-content";
+  contentDiv.innerText = "";
+  
+  assistantDiv.appendChild(headerDiv);
+  assistantDiv.appendChild(contentDiv);
+  chatArea.appendChild(assistantDiv);
+  
+  const sourcesDiv = document.createElement("div");
+  sourcesDiv.className = "message-sources";
+  sourcesDiv.id = "current-sources";
+  sourcesDiv.style.display = "none";
+  assistantDiv.appendChild(sourcesDiv);
+  
+  chatArea.scrollTop = 1e9;
+  
+  let fullText = "";
+  
+  ES = new EventSource(`/api/sessions/${SESSION_ID}/chat?token=${encodeURIComponent(TOKEN)}&q=${encodeURIComponent(question)}`);
+
+  ES.onmessage = (ev)=>{
+    const msg = JSON.parse(ev.data);
+    if(msg.type === "meta"){
+      const sources = msg.sources;
+      document.getElementById("current-sources").innerHTML = "📚 知识来源：<ul class='source-list'>" + 
+        sources.map(s=>{
+          const bookName = s.book.replace(/\.(pdf|PDF)$/, '');
+          return `<li>${bookName} - 第${s.page}页</li>`;
+        }).join("") + 
+        "</ul>";
+      document.getElementById("current-sources").style.display = "block";
+      return;
+    }
+    if(msg.type === "delta"){
+      fullText += msg.text;
+      const contentEl = document.getElementById("current-content");
+      // 边输出边渲染 Markdown（包含所有扩展语法）
+      const cleanedContent = fullText.replace(/\n{2,}/g, '\n\n');
+      contentEl.innerHTML = marked.parse(cleanedContent);
+      // 渲染数学公式
+      renderMath(contentEl);
+      document.getElementById("chatArea").scrollTop = 1e9;
+      return;
+    }
+    if(msg.type === "error"){
+      const contentEl = document.getElementById("current-content");
+      contentEl.innerText += "\n\n[错误] " + msg.message;
+      ES.close();
+      return;
+    }
+    if(msg.type === "exercise"){
+      return;
+    }
+    if(msg.type === "done"){
+      ES.close();
+      document.getElementById("current-message").id = "";
+      loadHistory();
+      loadQuiz();
+      loadSessions();
+      return;
+    }
+  };
+
+  ES.onerror = ()=>{
+    const contentEl = document.getElementById("current-content");
+    contentEl.innerText += "\n\n[连接中断] 请检查服务器或API配置。";
+    try{ ES.close(); }catch(e){}
+  };
+}
+
+document.getElementById("btnLogin").onclick = ()=>loginOrRegister("login");
+document.getElementById("btnReg").onclick = ()=>loginOrRegister("register");
+
+document.getElementById("btnNewSession").onclick = createNewSession;
+
+// 清空所有答案
+document.getElementById("btnClearAnswers").onclick = ()=>{
+  document.querySelectorAll("input[type='radio']").forEach(r => r.checked = false);
+  document.querySelectorAll("[id^='quiz-result-']").forEach(d => d.innerHTML = "");
+};
+
+// 发送问题按钮
+const sendQuestion = async ()=>{
+  const question = document.getElementById("q").value.trim();
+  if(!question) return;
+  if(!SESSION_ID) {
+    alert("请先登录");
+    return;
+  }
+  document.getElementById("q").value="";
+  // 记录当前习题数量并显示加载动画
+  LAST_EXERCISE_COUNT = EXERCISES.length;
+  showQuizLoading();
+  
+  // 获取当前会话的消息数
+  try{
+    const session = await api(`/api/sessions/${SESSION_ID}`);
+    const messages = session.messages || [];
+    
+    // 如果是第一条消息，发送后自动生成标题
+    if(messages.length === 0){
+      startStream(question);
+      // 在流结束后生成标题
+      setTimeout(async () => {
+        try{
+          const updatedSession = await api(`/api/sessions/${SESSION_ID}`);
+          if(!updatedSession.title || updatedSession.title === "无标题"){
+            const titleRes = await api(`/api/sessions/${SESSION_ID}/generate_title`, "POST", {});
+            await loadSessions();
+          }
+        }catch(e){
+          console.log("标题生成可选操作，失败不影响:", e);
+        }
+      }, 2000);
+    }else{
+      startStream(question);
+    }
+  }catch(e){
+    // 如果获取会话失败，直接发送
+    startStream(question);
+  }
+};
+
+document.getElementById("btnAsk").onclick = sendQuestion;
+
+// Textarea 回车键监听和动态高度
+const textarea = document.getElementById("q");
+textarea.addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendQuestion();
+  }
+  // Shift+Enter 保持默认行为（换行）
+});
+
+// 输入时动态调整高度
+textarea.addEventListener("input", () => {
+  autoResizeTextarea(textarea);
+});
+
+// 初始化输入框高度
+autoResizeTextarea(textarea);
+
+document.getElementById("btnWrongbook").onclick = async ()=>{
+  if(!SESSION_ID) return;
+  try{
+    document.getElementById("wrongModal").classList.remove("hidden");
+    document.getElementById("wrongModal").classList.add("flex");
+    const list = await api(`/api/wrongbook?session_id=${SESSION_ID}`);
+    const box = document.getElementById("wrongList");
+    box.innerHTML = "";
+    if(list.length===0){
+      box.innerHTML = "<div class='text-sm text-gray-500'>暂无错题</div>";
+      return;
+    }
+    list.forEach(it=>{
+      const d = document.createElement("div");
+      d.className = "bubble assistant";
+      d.innerText = `题目：${it.question}\n你的首次答案：${it.user_first_answer}\n标准答案：${it.correct_answer}\n时间：${it.created_at}`;
+      box.appendChild(d);
+    });
+  }catch(e){
+    alert("加载错题本失败: " + e.message);
+  }
+};
+
+document.getElementById("btnCloseWrong").onclick = ()=>{
+  document.getElementById("wrongModal").classList.add("hidden");
+  document.getElementById("wrongModal").classList.remove("flex");
+};
+
+document.getElementById("btnLogout").onclick = ()=>{
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("session_id");
+  TOKEN=""; USER=null; SESSION_ID=""; SESSIONS=[];
+  location.reload();
+};
+
+(async function init(){
+  // 初始化响应式布局
+  layoutManager = new LayoutManager();
+  
+  if(TOKEN && USER){
+    try{
+      const me = await api("/api/me");
+      document.getElementById("username").innerText = me.username;
+      document.getElementById("avatar").src = me.avatar || "/static/img/default_avatar.svg";
+      document.getElementById("btnLogout").classList.remove("hidden");
+      showAuth(false);
+      
+      // 加载会话列表
+      await loadSessions();
+      
+      // 如果没有会话或会话不存在，创建一个
+      if(!SESSION_ID || !SESSIONS.find(s => s.id === SESSION_ID)){
+        const sessionRes = await api("/api/sessions", "POST");
+        SESSION_ID = sessionRes.id;
+        localStorage.setItem("session_id", SESSION_ID);
+        await loadSessions();
+      }
+      
+      await loadHistory();
+      await loadQuiz();
+    }catch(e){
+      showAuth(true);
+    }
+  }else{
+    showAuth(true);
+  }
+})();
+</script>
+</body>
+</html>
