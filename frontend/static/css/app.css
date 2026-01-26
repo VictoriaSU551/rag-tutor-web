@@ -1,0 +1,234 @@
+:root{
+  --orange-weak: #ffd8b5;
+  --orange-border:#ffb377;
+  --bg:#fff8f2;
+}
+html,body{
+  height:100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+body{
+  background: linear-gradient(180deg, var(--bg), #ffffff);
+}
+.chatbox{
+  border: 1.5px solid var(--orange-border);
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+  border-radius: 18px;
+}
+.bubble{
+  border: 1.2px solid var(--orange-weak);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.bubble.assistant{background:#fff7ef;}
+.bubble.user{background:#ffffff;}
+
+/* 对话消息样式 */
+.message-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.message-user {
+  background: linear-gradient(135deg, #fef9f3 0%, #fdf5eb 100%);
+  border: 2px solid #ffb347;
+  border-left: 5px solid #ff8c00;
+}
+
+.message-assistant {
+  background: linear-gradient(135deg, #f8fbfe 0%, #f3f8fd 100%);
+  border: 2px solid #64b5f6;
+  border-left: 5px solid #1976d2;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.role-badge {
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.message-user .role-badge {
+  background: #ff9800;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(255,152,0,0.3);
+}
+
+.message-assistant .role-badge {
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(25,118,210,0.3);
+}
+
+.msg-time {
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.message-content {
+  color: #1a1a1a;
+  line-height: 1.7;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.message-user .message-content {
+  font-weight: 500;
+}
+
+/* Markdown 渲染样式 */
+.message-content h1, .message-content h2, .message-content h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.message-content h1 { font-size: 1.5em; }
+.message-content h2 { font-size: 1.3em; }
+.message-content h3 { font-size: 1.1em; }
+
+.message-content p {
+  margin: 8px 0;
+}
+
+.message-content ul, .message-content ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.message-content li {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.message-content code {
+  background: rgba(0,0,0,0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 12px 0;
+  color: #f8f8f2;
+}
+
+.message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-content blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 12px 0;
+  color: #666;
+  font-style: italic;
+}
+
+.message-content hr {
+  border: none;
+  border-top: 2px solid #ddd;
+  margin: 16px 0;
+}
+
+.message-content a {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+.message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.message-content th, .message-content td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.message-content th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.message-sources {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px dashed #64b5f6;
+  font-size: 12px;
+  color: #333;
+  font-style: italic;
+  background: rgba(144, 202, 249, 0.15);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+}
+
+.source-list li {
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+}
+
+.source-list li:before {
+  content: "▪";
+  position: absolute;
+  left: 0;
+  color: #1976d2;
+  font-weight: bold;
+}
+
+.msg-time {
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: help;
+}
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr !important;
+  }
+  main > section {
+    grid-column: 1 !important;
+  }
+  /* 隐藏左侧会话列表和右侧练习题，只显示中间对话 */
+  main > section:nth-child(1),
+  main > section:nth-child(3) {
+    display: none;
+  }
+}

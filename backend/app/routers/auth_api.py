@@ -53,14 +53,14 @@ def upload_avatar(token: str, file: UploadFile = File(...), db: Session = Depend
     if file.content_type not in ("image/png", "image/jpeg", "image/webp"):
         raise HTTPException(status_code=400, detail="仅支持 png/jpg/webp")
 
-    os.makedirs("app/static/img/avatars", exist_ok=True)
+    os.makedirs("../frontend/static/img/avatars", exist_ok=True)
     ext = ".png" if file.content_type == "image/png" else (".webp" if file.content_type == "image/webp" else ".jpg")
-    save_path = f"app/static/img/avatars/u{uid}{ext}"
+    save_path = f"../frontend/static/img/avatars/u{uid}{ext}"
 
     with open(save_path, "wb") as f:
         f.write(file.file.read())
 
-    user.avatar_url = "/" + save_path.replace("app/", "")
+    user.avatar_url = "/" + save_path.replace("../frontend/", "")
     db.add(user)
     db.commit()
 
