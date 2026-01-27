@@ -16,3 +16,10 @@ class QuizAnswerIn(BaseModel):
 
 class AddWrongIn(BaseModel):
     user_first_answer: str = Field(default="")
+
+class AddManualWrongIn(BaseModel):
+    question: str = Field(min_length=1)
+    options: list[str] = Field(default=None)
+    correct_answer: str = Field(min_length=1)
+    explanation: str = Field(default="")
+    difficulty: str = Field(default="中等")

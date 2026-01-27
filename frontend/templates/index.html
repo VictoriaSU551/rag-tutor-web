@@ -282,12 +282,25 @@
 
   <!-- 错题本弹窗 -->
   <div id="wrongModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
-    <div class="chatbox w-full max-w-2xl p-5">
-      <div class="flex items-center justify-between">
+    <div class="chatbox w-full max-w-6xl h-[80vh] p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-4">
         <div class="text-xl font-semibold">错题本</div>
         <button id="btnCloseWrong" class="text-gray-500">关闭</button>
       </div>
-      <div id="wrongList" class="mt-3 space-y-3 max-h-[70vh] overflow-auto"></div>
+
+      <div class="flex flex-1 gap-4 min-h-0">
+        <!-- 左边：错题列表 (1/3) -->
+        <div class="flex-1 bg-gray-50 rounded-lg p-4 overflow-auto">
+          <div class="font-medium mb-3">错题列表</div>
+          <div id="wrongList" class="space-y-2"></div>
+        </div>
+
+        <!-- 右边：错题详情 (2/3) -->
+        <div class="flex-[2] bg-white rounded-lg p-4 overflow-auto">
+          <div class="font-medium mb-3">错题详情</div>
+          <div id="wrongDetail" class="text-sm text-gray-500">请选择左侧的错题查看详情</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -297,6 +310,7 @@ let USER = JSON.parse(localStorage.getItem("user") || "null");
 let SESSION_ID = localStorage.getItem("session_id") || "";
 let SESSIONS = [];
 let EXERCISES = [];  // 保存当前会话的所有习题
+let WRONGBOOK = [];  // 保存用户的错题本
 let ES = null;
 let QUIZ_LOADING = false; // 习题生成中的标记
 let PENDING_EXERCISE = false; // 是否等待新习题
@@ -872,11 +886,17 @@ async function loadQuiz(){
       submitBtn.innerText = "提交";
       submitBtn.onclick = () => submitQuizAnswer(index);
       
+      const addWrongBtn = document.createElement("button");
+      addWrongBtn.className = "px-3 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600";
+      addWrongBtn.innerText = "添加到错题本";
+      addWrongBtn.onclick = () => addToWrongbook(index);
+      
       const resultDiv = document.createElement("div");
       resultDiv.id = `quiz-result-${index}`;
       resultDiv.className = "text-sm";
       
       btnDiv.appendChild(submitBtn);
+      btnDiv.appendChild(addWrongBtn);
       quizItem.appendChild(btnDiv);
       quizItem.appendChild(resultDiv);
       
@@ -1224,23 +1244,10 @@ textarea.addEventListener("input", () => {
 autoResizeTextarea(textarea);
 
 document.getElementById("btnWrongbook").onclick = async ()=>{
-  if(!SESSION_ID) return;
   try{
     document.getElementById("wrongModal").classList.remove("hidden");
     document.getElementById("wrongModal").classList.add("flex");
-    const list = await api(`/api/wrongbook?session_id=${SESSION_ID}`);
-    const box = document.getElementById("wrongList");
-    box.innerHTML = "";
-    if(list.length===0){
-      box.innerHTML = "<div class='text-sm text-gray-500'>暂无错题</div>";
-      return;
-    }
-    list.forEach(it=>{
-      const d = document.createElement("div");
-      d.className = "bubble assistant";
-      d.innerText = `题目：${it.question}\n你的首次答案：${it.user_first_answer}\n标准答案：${it.correct_answer}\n时间：${it.created_at}`;
-      box.appendChild(d);
-    });
+    await loadWrongbook();
   }catch(e){
     alert("加载错题本失败: " + e.message);
   }
@@ -1291,6 +1298,176 @@ document.getElementById("btnLogout").onclick = ()=>{
     showAuth(true);
   }
 })();
+
+// ==================== 错题本管理 ====================
+async function loadWrongbook(){
+  try{
+    const list = await api(`/api/wrongbook`);
+    WRONGBOOK = list;
+    renderWrongbookList();
+    document.getElementById("wrongDetail").innerHTML = '<div class="text-sm text-gray-500">请选择左侧的错题查看详情</div>';
+  }catch(e){
+    alert("加载错题本失败: " + e.message);
+  }
+}
+
+function renderWrongbookList(){
+  const box = document.getElementById("wrongList");
+  box.innerHTML = "";
+  
+  if(WRONGBOOK.length === 0){
+    box.innerHTML = "<div class='text-sm text-gray-500'>暂无错题</div>";
+    return;
+  }
+  
+  WRONGBOOK.forEach((item, index) => {
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors";
+    itemDiv.onclick = () => showWrongDetail(index);
+    
+    const titleDiv = document.createElement("div");
+    titleDiv.className = "font-medium text-sm mb-1 truncate";
+    titleDiv.innerText = item.question.length > 50 ? item.question.substring(0, 50) + "..." : item.question;
+    
+    const timeDiv = document.createElement("div");
+    timeDiv.className = "text-xs text-gray-500";
+    const date = new Date(item.created_at * 1000);
+    timeDiv.innerText = date.toLocaleString('zh-CN');
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "float-right text-red-500 hover:text-red-700 text-sm";
+    deleteBtn.innerText = "✕";
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteWrongItem(index);
+    };
+    
+    itemDiv.appendChild(deleteBtn);
+    itemDiv.appendChild(titleDiv);
+    itemDiv.appendChild(timeDiv);
+    box.appendChild(itemDiv);
+  });
+}
+
+function showWrongDetail(index){
+  const item = WRONGBOOK[index];
+  const detailDiv = document.getElementById("wrongDetail");
+  
+  // 清除之前的选中状态
+  document.querySelectorAll("#wrongList > div").forEach(div => {
+    div.classList.remove("bg-blue-50", "border-blue-300");
+    div.classList.add("bg-white", "border-gray-200");
+  });
+  
+  // 设置当前选中状态
+  const selectedDiv = document.querySelector(`#wrongList > div:nth-child(${index + 1})`);
+  if(selectedDiv){
+    selectedDiv.classList.remove("bg-white", "border-gray-200");
+    selectedDiv.classList.add("bg-blue-50", "border-blue-300");
+  }
+  
+  // 显示详情和重做功能
+  detailDiv.innerHTML = `
+    <div class="space-y-4">
+      <div>
+        <div class="font-medium mb-2">题目：</div>
+        <div class="text-sm bg-gray-50 p-3 rounded">${item.question}</div>
+      </div>
+      
+      ${item.options ? `
+      <div>
+        <div class="font-medium mb-2">选项：</div>
+        <div class="space-y-2">
+          ${item.options.map((opt, i) => `
+            <label class="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+              <input type="radio" name="wrong-quiz-${index}" value="${opt.charAt(0)}" class="w-4 h-4">
+              <span class="text-sm">${opt}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+      
+      <div class="flex gap-2">
+        <button onclick="redoWrongQuiz(${index})" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">
+          重做题目
+        </button>
+        <button onclick="showWrongAnswer(${index})" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+          查看答案和解析
+        </button>
+      </div>
+      
+      <div id="wrong-result-${index}" class="hidden"></div>
+    </div>
+  `;
+}
+
+function redoWrongQuiz(index){
+  const item = WRONGBOOK[index];
+  const selected = document.querySelector(`input[name="wrong-quiz-${index}"]:checked`);
+  if(!selected){
+    alert("请选择答案");
+    return;
+  }
+  
+  const userAnswer = selected.value;
+  const isCorrect = userAnswer === item.correct_answer;
+  
+  const resultDiv = document.getElementById(`wrong-result-${index}`);
+  resultDiv.className = "mt-4 p-3 rounded";
+  resultDiv.classList.remove("hidden");
+  
+  if(isCorrect){
+    resultDiv.className += " bg-green-100 text-green-700";
+    resultDiv.innerHTML = "<div class='font-medium'>✓ 答对了！</div>";
+  }else{
+    resultDiv.className += " bg-red-100 text-red-700";
+    resultDiv.innerHTML = `<div class='font-medium'>✗ 答错了，正确答案是 ${item.correct_answer}</div>`;
+  }
+}
+
+function showWrongAnswer(index){
+  const item = WRONGBOOK[index];
+  const resultDiv = document.getElementById(`wrong-result-${index}`);
+  resultDiv.className = "mt-4 p-3 rounded bg-blue-50";
+  resultDiv.classList.remove("hidden");
+  
+  resultDiv.innerHTML = `
+    <div class="space-y-2">
+      <div class="font-medium">正确答案：${item.correct_answer}</div>
+      ${item.explanation ? `<div><div class="font-medium">解析：</div><div class="text-sm mt-1">${marked.parse(item.explanation)}</div></div>` : ''}
+    </div>
+  `;
+}
+
+async function deleteWrongItem(index){
+  if(!confirm("确定要删除这道错题吗？")) return;
+  
+  try{
+    await api(`/api/wrongbook/${index}`, "DELETE");
+    await loadWrongbook();
+    alert("错题已删除");
+  }catch(e){
+    alert("删除失败: " + e.message);
+  }
+}
+
+async function addToWrongbook(quizIndex){
+  const exercise = EXERCISES[quizIndex];
+  
+  try{
+    await api("/api/quiz/add_manual_wrong", "POST", {
+      question: exercise.question,
+      options: exercise.options,
+      correct_answer: exercise.correct_answer,
+      explanation: exercise.explanation,
+      difficulty: exercise.difficulty
+    });
+    alert("已添加到错题本");
+  }catch(e){
+    alert("添加到错题本失败: " + e.message);
+  }
+}
 </script>
 </body>
 </html>
