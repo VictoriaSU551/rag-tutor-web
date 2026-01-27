@@ -814,10 +814,20 @@ async function loadQuiz(){
       quizItem.className = "border rounded-lg p-3 space-y-2 bg-gray-50";
       quizItem.id = `quiz-${index}`;
       
+      // 根据难度获取对应的CSS类
+      const getDifficultyClass = (difficulty) => {
+        switch(difficulty) {
+          case '简单': return 'bg-green-100 text-green-700';
+          case '中等': return 'bg-orange-100 text-orange-700';
+          case '困难': return 'bg-red-100 text-red-700';
+          default: return 'bg-orange-100 text-orange-700';
+        }
+      };
+      
       // 题目号和难度
       const titleDiv = document.createElement("div");
       titleDiv.className = "flex items-center justify-between";
-      titleDiv.innerHTML = `<span class="font-medium text-sm">第${index + 1}题</span><span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">${ex.difficulty || '中等'}</span>`;
+      titleDiv.innerHTML = `<span class="font-medium text-sm">第${index + 1}题</span><span class="text-xs px-2 py-1 rounded ${getDifficultyClass(ex.difficulty || '中等')}">${ex.difficulty || '中等'}</span>`;
       quizItem.appendChild(titleDiv);
       
       // 题目
