@@ -992,7 +992,17 @@ async function loginOrRegister(kind){
       body: JSON.stringify({username, password})
     });
     const data = await res.json();
-    if(!res.ok) throw new Error(data.detail || "失败");
+    if(!res.ok) {
+      let errorMsg = "失败";
+      if (typeof data.detail === 'string') {
+        errorMsg = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        errorMsg = data.detail.map(d => typeof d === 'string' ? d : d.msg || JSON.stringify(d)).join('; ');
+      } else if (data.detail) {
+        errorMsg = JSON.stringify(data.detail);
+      }
+      throw new Error(errorMsg);
+    }
 
     setUser(data.user, data.token);
 
