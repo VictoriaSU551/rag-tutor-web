@@ -36,7 +36,7 @@ def build_user_prompt(question: str, contexts: list[dict]) -> str:
 - 不包含参考文献
 """
 
-def build_exercise_prompt(question: str, contexts: list[dict]) -> str:
+def build_exercise_prompt(question: str, contexts: list[dict], difficulty: str = "medium") -> str:
     """构建用于生成练习题的提示词"""
     lines = []
     for i, c in enumerate(contexts, start=1):
@@ -46,17 +46,25 @@ def build_exercise_prompt(question: str, contexts: list[dict]) -> str:
         lines.append(f"[{i}] {c['book']} (页码 {c['page']}):\n{excerpt}\n")
     joined = "\n".join(lines)
     
+    # 难度映射
+    difficulty_map = {
+        "easy": "简单",
+        "medium": "中等", 
+        "hard": "困难"
+    }
+    difficulty_text = difficulty_map.get(difficulty, "中等")
+    
     return f"""用户问题：{question}
 
 相关资料：
 {joined}
 
-请生成1道针对该问题的考研级别练习题。
+请生成1道针对该问题的{difficulty_text}难度考研级别练习题。
 返回以下JSON格式：
 {{
     "question": "题目内容",
     "options": ["A) 选项A", "B) 选项B", "C) 选项C", "D) 选项D"],  // 如果是选择题
     "correct_answer": "A",  // 或具体答案
     "explanation": "**知识点：**\n- 核心概念\n- 相关原理\n\n**答题思路：**\n1. 分析题目要求\n2. 应用相关知识\n3. 得出结论",  // 使用 Markdown 格式的详细解析
-    "difficulty": "中等"  // 简单/中等/困难
+    "difficulty": "{difficulty_text}"  // 简单/中等/困难
 }}"""

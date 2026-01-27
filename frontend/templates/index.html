@@ -238,6 +238,11 @@
         <div class="section-header">
           <button class="collapse-btn" data-toggle="quiz" title="展开/收起">▶</button>
           <div class="font-semibold flex-1">练习题</div>
+          <select id="quizDifficulty" class="text-xs border rounded px-2 py-1 mr-2">
+            <option value="medium">中等</option>
+            <option value="easy">简单</option>
+            <option value="hard">困难</option>
+          </select>
           <button id="btnClearAnswers" class="text-xs text-orange-600 hidden">清空答案</button>
         </div>
         <div class="section-content">
@@ -1081,7 +1086,9 @@ function startStream(question){
   
   let fullText = "";
   
-  ES = new EventSource(`/api/sessions/${SESSION_ID}/chat?token=${encodeURIComponent(TOKEN)}&q=${encodeURIComponent(question)}`);
+  const difficulty = document.getElementById("quizDifficulty").value;
+  
+  ES = new EventSource(`/api/sessions/${SESSION_ID}/chat?token=${encodeURIComponent(TOKEN)}&q=${encodeURIComponent(question)}&difficulty=${encodeURIComponent(difficulty)}`);
 
   ES.onmessage = (ev)=>{
     const msg = JSON.parse(ev.data);

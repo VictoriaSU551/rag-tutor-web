@@ -84,7 +84,7 @@ def get_session_detail(session_id: str, token: str, db: Session = Depends(get_db
     }
 
 @router.get("/sessions/{session_id}/chat")
-async def chat_stream(session_id: str, token: str, q: str = "", db: Session = Depends(get_db)):
+async def chat_stream(session_id: str, token: str, q: str = "", difficulty: str = "medium", db: Session = Depends(get_db)):
     """
     流式对话，支持SSE
     前端用 EventSource: /api/sessions/{session_id}/chat?token=...&q=...
@@ -157,7 +157,7 @@ async def chat_stream(session_id: str, token: str, q: str = "", db: Session = De
         # 生成练习题（JSON Schema 模式）
         exercises = []
         try:
-            exercise_prompt = build_exercise_prompt(q.strip(), contexts)
+            exercise_prompt = build_exercise_prompt(q.strip(), contexts, difficulty)
             exercise_json = client.json_generate(EXERCISE_SYSTEM_PROMPT, exercise_prompt)
             exercise_data = json.loads(exercise_json)
             exercises.append(exercise_data)
