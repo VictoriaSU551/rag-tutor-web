@@ -147,13 +147,7 @@
       color: #f97316;
     }
     
-    .wrong-resize-handle {
-      cursor: col-resize;
-    }
-    
-    .wrong-resize-handle:hover {
-      background-color: #f97316;
-    }
+    .section-content {
       display: flex;
       flex-direction: column;
       flex: 1;
@@ -288,28 +282,12 @@
 
   <!-- 错题本弹窗 -->
   <div id="wrongModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
-    <div class="chatbox w-full max-w-6xl h-[80vh] p-5 flex flex-col">
-      <div class="flex items-center justify-between mb-4">
+    <div class="chatbox w-full max-w-2xl p-5">
+      <div class="flex items-center justify-between">
         <div class="text-xl font-semibold">错题本</div>
         <button id="btnCloseWrong" class="text-gray-500">关闭</button>
       </div>
-      
-      <div class="flex flex-1 gap-4 min-h-0">
-        <!-- 左边：错题列表 -->
-        <div class="flex-1 bg-gray-50 rounded-lg p-4 overflow-auto">
-          <div class="font-medium mb-3">错题列表</div>
-          <div id="wrongList" class="space-y-2"></div>
-        </div>
-        
-        <!-- 分界线 -->
-        <div class="wrong-resize-handle w-1 bg-gray-300 cursor-col-resize hover:bg-gray-400 transition-colors"></div>
-        
-        <!-- 右边：错题详情 -->
-        <div class="flex-1 bg-white rounded-lg p-4 overflow-auto">
-          <div class="font-medium mb-3">错题详情</div>
-          <div id="wrongDetail" class="text-sm text-gray-500">请选择左侧的错题查看详情</div>
-        </div>
-      </div>
+      <div id="wrongList" class="mt-3 space-y-3 max-h-[70vh] overflow-auto"></div>
     </div>
   </div>
 
@@ -894,17 +872,11 @@ async function loadQuiz(){
       submitBtn.innerText = "提交";
       submitBtn.onclick = () => submitQuizAnswer(index);
       
-      const addWrongBtn = document.createElement("button");
-      addWrongBtn.className = "px-3 py-2 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600 hidden";
-      addWrongBtn.innerText = "加入错题本";
-      addWrongBtn.onclick = () => addToWrongbook(index);
-      
       const resultDiv = document.createElement("div");
       resultDiv.id = `quiz-result-${index}`;
       resultDiv.className = "text-sm";
       
       btnDiv.appendChild(submitBtn);
-      btnDiv.appendChild(addWrongBtn);
       quizItem.appendChild(btnDiv);
       quizItem.appendChild(resultDiv);
       
@@ -1018,29 +990,8 @@ async function submitQuizAnswer(quizIndex){
   explanationDiv.appendChild(explainContent);
   resultContainer.appendChild(explanationDiv);
   
-  // 答错时显示加入错题本按钮
-  if(!isCorrect){
-    const addWrongBtn = document.querySelector(`#quiz-${quizIndex} .bg-red-500`);
-    if(addWrongBtn) addWrongBtn.classList.remove("hidden");
-  }
-}
-
-async function addToWrongbook(quizIndex){
-  const exercise = EXERCISES[quizIndex];
-  const selected = document.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
-  const userAnswer = selected ? selected.value : "";
-  
-  try{
-    await api(`/api/quiz/add_wrong?session_id=${SESSION_ID}`, "POST", {
-      user_first_answer: userAnswer
-    });
-    alert("已加入错题本");
-    // 隐藏按钮
-    const addWrongBtn = document.querySelector(`#quiz-${quizIndex} .bg-red-500`);
-    if(addWrongBtn) addWrongBtn.classList.add("hidden");
-  }catch(e){
-    alert("加入错题本失败: " + e.message);
-  }
+  resultDiv.innerHTML = "";
+  resultDiv.appendChild(resultContainer);
 }
 
 async function loginOrRegister(kind){
@@ -1277,7 +1228,19 @@ document.getElementById("btnWrongbook").onclick = async ()=>{
   try{
     document.getElementById("wrongModal").classList.remove("hidden");
     document.getElementById("wrongModal").classList.add("flex");
-    await loadWrongbook();
+    const list = await api(`/api/wrongbook?session_id=${SESSION_ID}`);
+    const box = document.getElementById("wrongList");
+    box.innerHTML = "";
+    if(list.length===0){
+      box.innerHTML = "<div class='text-sm text-gray-500'>暂无错题</div>";
+      return;
+    }
+    list.forEach(it=>{
+      const d = document.createElement("div");
+      d.className = "bubble assistant";
+      d.innerText = `题目：${it.question}\n你的首次答案：${it.user_first_answer}\n标准答案：${it.correct_answer}\n时间：${it.created_at}`;
+      box.appendChild(d);
+    });
   }catch(e){
     alert("加载错题本失败: " + e.message);
   }
@@ -1287,158 +1250,6 @@ document.getElementById("btnCloseWrong").onclick = ()=>{
   document.getElementById("wrongModal").classList.add("hidden");
   document.getElementById("wrongModal").classList.remove("flex");
 };
-
-// ==================== 错题本管理 ====================
-let WRONGBOOK = [];
-
-async function loadWrongbook(){
-  const list = await api(`/api/wrongbook`);
-  WRONGBOOK = list;
-  renderWrongbookList();
-  document.getElementById("wrongDetail").innerHTML = '<div class="text-sm text-gray-500">请选择左侧的错题查看详情</div>';
-}
-
-function renderWrongbookList(){
-  const box = document.getElementById("wrongList");
-  box.innerHTML = "";
-  
-  if(WRONGBOOK.length === 0){
-    box.innerHTML = "<div class='text-sm text-gray-500'>暂无错题</div>";
-    return;
-  }
-  
-  WRONGBOOK.forEach((item, index) => {
-    const itemDiv = document.createElement("div");
-    itemDiv.className = "p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors";
-    itemDiv.onclick = () => showWrongDetail(index);
-    
-    const titleDiv = document.createElement("div");
-    titleDiv.className = "font-medium text-sm mb-1 truncate";
-    titleDiv.innerText = item.question.length > 50 ? item.question.substring(0, 50) + "..." : item.question;
-    
-    const timeDiv = document.createElement("div");
-    timeDiv.className = "text-xs text-gray-500";
-    const date = new Date(item.created_at * 1000);
-    timeDiv.innerText = date.toLocaleString('zh-CN');
-    
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "float-right text-red-500 hover:text-red-700 text-sm";
-    deleteBtn.innerText = "✕";
-    deleteBtn.onclick = (e) => {
-      e.stopPropagation();
-      deleteWrongItem(index);
-    };
-    
-    itemDiv.appendChild(deleteBtn);
-    itemDiv.appendChild(titleDiv);
-    itemDiv.appendChild(timeDiv);
-    box.appendChild(itemDiv);
-  });
-}
-
-function showWrongDetail(index){
-  const item = WRONGBOOK[index];
-  const detailDiv = document.getElementById("wrongDetail");
-  
-  // 清除之前的选中状态
-  document.querySelectorAll("#wrongList > div").forEach(div => {
-    div.classList.remove("bg-blue-50", "border-blue-300");
-    div.classList.add("bg-white", "border-gray-200");
-  });
-  
-  // 设置当前选中状态
-  const selectedDiv = document.querySelector(`#wrongList > div:nth-child(${index + 1})`);
-  if(selectedDiv){
-    selectedDiv.classList.remove("bg-white", "border-gray-200");
-    selectedDiv.classList.add("bg-blue-50", "border-blue-300");
-  }
-  
-  // 显示详情
-  detailDiv.innerHTML = `
-    <div class="space-y-4">
-      <div>
-        <div class="font-medium mb-2">题目：</div>
-        <div class="text-sm bg-gray-50 p-3 rounded">${item.question}</div>
-      </div>
-      
-      <div>
-        <div class="font-medium mb-2">你的首次答案：</div>
-        <div class="text-sm bg-red-50 p-3 rounded text-red-700">${item.user_first_answer}</div>
-      </div>
-      
-      <div>
-        <div class="font-medium mb-2">标准答案：</div>
-        <div class="text-sm bg-green-50 p-3 rounded text-green-700">${item.correct_answer}</div>
-      </div>
-      
-      <div>
-        <div class="font-medium mb-2">添加时间：</div>
-        <div class="text-sm text-gray-600">${new Date(item.created_at * 1000).toLocaleString('zh-CN')}</div>
-      </div>
-    </div>
-  `;
-}
-
-async function deleteWrongItem(index){
-  if(!confirm("确定要删除这道错题吗？")) return;
-  
-  try{
-    await api(`/api/wrongbook/${index}`, "DELETE");
-    await loadWrongbook(); // 重新加载错题本
-    alert("错题已删除");
-  }catch(e){
-    alert("删除失败: " + e.message);
-  }
-}
-
-// ==================== 错题本分界线拖拽 ====================
-let isResizingWrong = false;
-let startX, startWidthLeft, startWidthRight;
-
-document.addEventListener('DOMContentLoaded', function() {
-  const resizeHandle = document.querySelector('.wrong-resize-handle');
-  const container = document.querySelector('#wrongModal .flex');
-  
-  if(resizeHandle && container){
-    resizeHandle.addEventListener('mousedown', function(e) {
-      isResizingWrong = true;
-      startX = e.clientX;
-      
-      const leftPanel = container.children[0];
-      const rightPanel = container.children[2];
-      
-      startWidthLeft = leftPanel.offsetWidth;
-      startWidthRight = rightPanel.offsetWidth;
-      
-      document.addEventListener('mousemove', resizeWrong);
-      document.addEventListener('mouseup', stopResizeWrong);
-    });
-  }
-});
-
-function resizeWrong(e) {
-  if (!isResizingWrong) return;
-  
-  const container = document.querySelector('#wrongModal .flex');
-  const leftPanel = container.children[0];
-  const rightPanel = container.children[2];
-  
-  const dx = e.clientX - startX;
-  const newWidthLeft = startWidthLeft + dx;
-  const newWidthRight = startWidthRight - dx;
-  
-  // 限制最小宽度
-  if (newWidthLeft > 200 && newWidthRight > 200) {
-    leftPanel.style.width = newWidthLeft + 'px';
-    rightPanel.style.width = newWidthRight + 'px';
-  }
-}
-
-function stopResizeWrong() {
-  isResizingWrong = false;
-  document.removeEventListener('mousemove', resizeWrong);
-  document.removeEventListener('mouseup', stopResizeWrong);
-}
 
 document.getElementById("btnLogout").onclick = ()=>{
   localStorage.removeItem("token");
