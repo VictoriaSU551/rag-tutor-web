@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>考研辅导 RAG 智能问答</title>
+  <title>道道的智能学习助手</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -183,8 +183,8 @@
   <div class="h-full flex flex-col px-4 py-3">
     <header class="flex items-center justify-between gap-4 mb-3">
       <div>
-        <div class="text-2xl font-semibold">考研辅导 RAG 智能问答</div>
-        <div class="text-sm text-gray-500">基于PDF资料检索 + Qwen 流式生成 + 练习题与错题本</div>
+        <div class="text-2xl font-semibold">道道的智能学习助手</div>
+        <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
       <div class="flex items-center gap-3">
         <img id="avatar" class="w-10 h-10 rounded-full border" src="/static/img/default_avatar.svg" />
@@ -526,7 +526,7 @@ function showQuizLoading() {
   loadingDiv.className = "quiz-loading-card";
   loadingDiv.innerHTML = `
     <div class="quiz-spinner animate-spin"></div>
-    <div class="text-sm text-gray-500">大模型回复中</div>
+    <div class="text-sm text-gray-500">题目生成中</div>
   `;
   // 去掉空提示，避免与加载提示并存
   const emptyMsg = box.querySelector('.text-gray-400');
