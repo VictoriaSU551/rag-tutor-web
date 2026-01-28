@@ -195,3 +195,33 @@ def wrongbook(token: str, db: Session = Depends(get_db)):
         "difficulty": w.get("difficulty"),
         "created_at": w.get("created_at")
     } for w in reversed(wrong_questions)]
+
+
+@router.delete("/wrongbook/{index}")
+def delete_wrong_item(token: str, index: int, db: Session = Depends(get_db)):
+    """删除用户错题本中指定索引的题目（前端使用的是 reversed 列表索引）"""
+    try:
+        uid = parse_token(token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    user = db.query(models.User).filter(models.User.id == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    meta = get_session_meta(user)
+    wrong_questions = meta.get("wrong_questions", [])
+
+    if not isinstance(wrong_questions, list) or len(wrong_questions) == 0:
+        raise HTTPException(status_code=404, detail="错题不存在")
+
+    # 前端返回的是 reversed(wrong_questions)，所以需要转换回原始索引
+    real_index = len(wrong_questions) - 1 - index
+    if real_index < 0 or real_index >= len(wrong_questions):
+        raise HTTPException(status_code=404, detail="错题不存在")
+
+    wrong_questions.pop(real_index)
+    meta["wrong_questions"] = wrong_questions
+    save_session_meta(user, meta, db)
+
+    return {"ok": True}
