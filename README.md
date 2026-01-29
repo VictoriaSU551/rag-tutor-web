@@ -58,7 +58,7 @@ rag-tutor-web/
 1. **Clone the repository**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/VictoriaSU551/rag-tutor-web.git
 cd rag-tutor-web
 ```
 
