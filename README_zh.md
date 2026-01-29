@@ -1,6 +1,6 @@
 # RAG Tutor Web
 
-**中文** | [English](README.md)
+[English](README.md) ｜ **简体中文**
 
 基于检索增强生成（RAG）技术的智能辅导系统，支持混合检索。
 

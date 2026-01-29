@@ -1,6 +1,6 @@
 # RAG Tutor Web
 
-[中文文档](README_zh.md) | **English**
+**English** ｜ [简体中文](README_zh.md)
 
 A Retrieval-Augmented Generation (RAG) based intelligent tutoring system with hybrid retrieval capabilities.
 
