@@ -1,18 +1,15 @@
-fastapi
-uvicorn[standard]
-jinja2
-python-multipart
-pydantic
-pydantic-settings
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
 
-sqlalchemy
-passlib[bcrypt]
-python-jose
+sqlalchemy>=2.0.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
 
-pymupdf
-numpy
-faiss-cpu
-sentence-transformers
-rank-bm25
-httpx
-openai
+pymupdf>=1.23.0
+numpy>=1.24.0
+faiss-cpu>=1.7.3
+rank-bm25>=0.2.2
+openai>=1.0.0

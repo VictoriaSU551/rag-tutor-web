@@ -1,0 +1,57 @@
+# 环境变量来源：根目录下的 .env 文件
+# 所有容器环境变量通过 docker-compose 从 .env 读取并传入
+
+services:
+  backend:
+    build: ./backend
+    container_name: rag-tutor-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/app.db
+      - PYTHONUNBUFFERED=1
+      - APP_ENV=${APP_ENV}
+      - APP_HOST=${APP_HOST}
+      - APP_PORT=${APP_PORT}
+      - BASE_URL=${BASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - QWEN_MODEL=${QWEN_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      # Docker 容器内的数据路径（绝对路径，对应 volume 挂载点）
+      - DATA_DIR=/app/data
+      - PDF_DIR=/app/data/pdfs
+      - INDEX_DIR=/app/data/index
+      - TOP_K=${TOP_K}
+      - CHUNK_SIZE=${CHUNK_SIZE}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP}
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: rag-tutor-frontend
+    ports:
+      - "8002:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  backend_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
