@@ -51,7 +51,7 @@ rag-tutor-web/
 ### 前置条件
 
 - Docker 和 Docker Compose
-- 千文 API Key（从 [DashScope 控制台](https://dashscope.console.aliyun.com)获取）
+- 千问 API Key（从 [DashScope 控制台](https://dashscope.console.aliyun.com)获取）
 
 ### 安装步骤
 
