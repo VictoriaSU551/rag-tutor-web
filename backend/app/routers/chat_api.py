@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -15,21 +16,71 @@ from ..config import settings
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
-_retriever = None
+class CombinedRetriever:
+    def __init__(self, retrievers):
+        self.retrievers = retrievers
+    
+    def search(self, query: str):
+        all_results = []
+        for retriever in self.retrievers:
+            try:
+                results = retriever.search(query)
+                all_results.extend(results)
+            except Exception as e:
+                print(f"检索器错误: {e}")
+                continue
+        
+        # 按相似度排序并去重
+        all_results.sort(key=lambda x: x.get('score', 0), reverse=True)
+        
+        # 去重：基于文本内容去重
+        seen_texts = set()
+        unique_results = []
+        for result in all_results:
+            text = result.get('text', '').strip()
+            if text and text not in seen_texts:
+                seen_texts.add(text)
+                unique_results.append(result)
+        
+        return unique_results[:settings.TOP_K]
 
-def get_retriever():
-    global _retriever
-    if _retriever is None:
-        _retriever = Retriever(settings.INDEX_DIR, settings.TOP_K)
+_retrievers = {}
+
+def get_retriever(user_id: int):
+    cache_key = f"user_{user_id}"
+    if cache_key not in _retrievers:
+        retrievers = []
+        
+        # 总是包含全局索引
         try:
-            _retriever.load()
+            global_retriever = Retriever(settings.INDEX_DIR, settings.TOP_K)
+            global_retriever.load()
+            retrievers.append(global_retriever)
         except Exception as e:
+            print(f"全局索引加载失败: {e}")
+        
+        # 尝试加载用户特定索引
+        user_index_dir = os.path.join(settings.DATA_DIR, str(user_id), 'index')
+        if os.path.exists(user_index_dir):
+            try:
+                user_retriever = Retriever(user_index_dir, settings.TOP_K)
+                user_retriever.load()
+                retrievers.append(user_retriever)
+            except Exception as e:
+                print(f"用户索引加载失败: {e}")
+        
+        if retrievers:
+            if len(retrievers) == 1:
+                _retrievers[cache_key] = retrievers[0]
+            else:
+                _retrievers[cache_key] = CombinedRetriever(retrievers)
+        else:
             raise RuntimeError(
-                f"RAG 索引加载失败: {str(e)}\n"
+                f"RAG 索引加载失败\n"
                 f"请运行: python scripts/build_index.py\n"
                 f"确保 {settings.PDF_DIR} 目录中有 PDF 文件"
             )
-    return _retriever
+    return _retrievers[cache_key]
 
 @router.get("/sessions")
 def get_sessions(token: str, db: Session = Depends(get_db)):
@@ -117,7 +168,7 @@ async def chat_stream(session_id: str, token: str, q: str = "", difficulty: str 
     }
     chat_messages.append(user_message)
 
-    retriever = get_retriever()
+    retriever = get_retriever(uid)
     contexts = retriever.search(q.strip())
 
     user_prompt = build_user_prompt(q.strip(), contexts)

@@ -187,6 +187,7 @@
         <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="showKnowledgeBaseModal()" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-sm">知识库管理</button>
         <img id="avatar" class="w-10 h-10 rounded-full border" src="/static/img/default_avatar.svg" />
         <div class="text-sm">
           <div id="username" class="font-medium">未登录</div>
@@ -1468,6 +1469,383 @@ async function addToWrongbook(quizIndex){
     alert("添加到错题本失败: " + e.message);
   }
 }
+
+// 知识库管理modal相关函数
+function showKnowledgeBaseModal() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('请先登录');
+    return;
+  }
+  document.getElementById('knowledgeBaseModal').classList.remove('hidden');
+  loadPdfList();
+  
+  // 重新绑定上传表单事件
+  const uploadForm = document.getElementById('uploadForm');
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', handleUploadSubmit);
+  }
+  
+  // 绑定文件选择事件
+  const pdfFileInput = document.getElementById('pdfFile');
+  if (pdfFileInput) {
+    pdfFileInput.addEventListener('change', validateFileSize);
+  }
+}
+
+function hideKnowledgeBaseModal() {
+  document.getElementById('knowledgeBaseModal').classList.add('hidden');
+}
+
+// 点击modal背景关闭modal
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('knowledgeBaseModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        hideKnowledgeBaseModal();
+      }
+    });
+  }
+});
+
+// 上传PDF表单提交处理函数
+async function handleUploadSubmit(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    const uploadMessage = document.getElementById('uploadMessage');
+    if (uploadMessage) {
+      uploadMessage.textContent = '请先登录';
+      uploadMessage.className = 'mt-4 text-red-500';
+    }
+    return;
+  }
+
+  const fileInput = document.getElementById('pdfFile');
+  const file = fileInput.files[0];
+  
+  // 检查文件大小 (200MB = 200 * 1024 * 1024 bytes)
+  const maxSize = 200 * 1024 * 1024;
+  if (file.size > maxSize) {
+    const uploadMessage = document.getElementById('uploadMessage');
+    if (uploadMessage) {
+      uploadMessage.textContent = `文件过大！最大支持200MB，当前文件大小：${(file.size / 1024 / 1024).toFixed(2)}MB`;
+      uploadMessage.className = 'mt-4 text-red-500';
+    }
+    return;
+  }
+
+  const uploadMessage = document.getElementById('uploadMessage');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  const uploadButton = document.getElementById('uploadButton');
+
+  if (uploadMessage) {
+    uploadMessage.textContent = '准备上传...';
+    uploadMessage.className = 'mt-4 text-blue-500';
+  }
+
+  // 显示进度条
+  if (uploadProgress) {
+    uploadProgress.classList.remove('hidden');
+  }
+
+  // 禁用上传按钮
+  if (uploadButton) {
+    uploadButton.disabled = true;
+    uploadButton.textContent = '上传中...';
+  }
+
+  try {
+    formData.append('token', token);
+    
+    const xhr = new XMLHttpRequest();
+    
+    // 上传进度事件
+    xhr.upload.addEventListener('progress', function(e) {
+      if (e.lengthComputable) {
+        const percentComplete = (e.loaded / e.total) * 100;
+        if (progressBar) {
+          progressBar.style.width = percentComplete + '%';
+        }
+        if (progressText) {
+          progressText.textContent = `上传进度：${percentComplete.toFixed(1)}%`;
+        }
+      }
+    });
+
+    // 上传完成事件
+    xhr.addEventListener('load', function() {
+      if (xhr.status === 200) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (uploadMessage) {
+            uploadMessage.textContent = result.message;
+            uploadMessage.className = 'mt-4 text-green-500';
+          }
+          e.target.reset();
+          loadPdfList(); // 重新加载列表
+        } catch (parseError) {
+          if (uploadMessage) {
+            uploadMessage.textContent = '响应解析失败';
+            uploadMessage.className = 'mt-4 text-red-500';
+          }
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          if (uploadMessage) {
+            uploadMessage.textContent = error.detail || '上传失败';
+            uploadMessage.className = 'mt-4 text-red-500';
+          }
+        } catch (parseError) {
+          if (uploadMessage) {
+            uploadMessage.textContent = `上传失败 (${xhr.status})`;
+            uploadMessage.className = 'mt-4 text-red-500';
+          }
+        }
+      }
+      
+      // 隐藏进度条
+      if (uploadProgress) {
+        uploadProgress.classList.add('hidden');
+      }
+      
+      // 重置进度条
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+      if (progressText) {
+        progressText.textContent = '上传进度：0%';
+      }
+      
+      // 重新启用上传按钮
+      if (uploadButton) {
+        uploadButton.disabled = false;
+        uploadButton.textContent = '上传PDF';
+      }
+    });
+
+    // 上传错误事件
+    xhr.addEventListener('error', function() {
+      if (uploadMessage) {
+        uploadMessage.textContent = '网络错误，请检查网络连接';
+        uploadMessage.className = 'mt-4 text-red-500';
+      }
+      
+      // 隐藏进度条
+      if (uploadProgress) {
+        uploadProgress.classList.add('hidden');
+      }
+      
+      // 重置进度条
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+      if (progressText) {
+        progressText.textContent = '上传进度：0%';
+      }
+      
+      // 重新启用上传按钮
+      if (uploadButton) {
+        uploadButton.disabled = false;
+        uploadButton.textContent = '上传PDF';
+      }
+    });
+
+    // 发送请求
+    xhr.open('POST', '/api/upload-pdf');
+    xhr.send(formData);
+
+  } catch (error) {
+    if (uploadMessage) {
+      uploadMessage.textContent = '初始化上传失败';
+      uploadMessage.className = 'mt-4 text-red-500';
+    }
+    
+    // 隐藏进度条
+    if (uploadProgress) {
+      uploadProgress.classList.add('hidden');
+    }
+    
+    // 重置进度条
+    if (progressBar) {
+      progressBar.style.width = '0%';
+    }
+    if (progressText) {
+      progressText.textContent = '上传进度：0%';
+    }
+    
+    // 重新启用上传按钮
+    if (uploadButton) {
+      uploadButton.disabled = false;
+      uploadButton.textContent = '上传PDF';
+    }
+  }
+}
+
+// 文件选择验证
+function validateFileSize() {
+  const fileInput = document.getElementById('pdfFile');
+  const file = fileInput.files[0];
+  const uploadMessage = document.getElementById('uploadMessage');
+  
+  if (file) {
+    const maxSize = 200 * 1024 * 1024; // 200MB
+    if (file.size > maxSize) {
+      if (uploadMessage) {
+        uploadMessage.textContent = `文件过大！最大支持200MB，当前文件大小：${(file.size / 1024 / 1024).toFixed(2)}MB`;
+        uploadMessage.className = 'mt-4 text-red-500';
+      }
+      fileInput.value = ''; // 清空文件选择
+    } else {
+      if (uploadMessage) {
+        uploadMessage.textContent = `已选择文件：${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+        uploadMessage.className = 'mt-4 text-green-500';
+      }
+    }
+  }
+}
+
+// 加载现有PDF列表
+async function loadPdfList() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    const pdfList = document.getElementById('pdfList');
+    if (pdfList) {
+      pdfList.innerHTML = '<p class="text-gray-500">请先登录</p>';
+    }
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/pdfs?token=${encodeURIComponent(token)}`, {
+      method: 'GET'
+    });
+
+    if (response.ok) {
+      const pdfs = await response.json();
+      displayPdfs(pdfs);
+    } else {
+      const pdfList = document.getElementById('pdfList');
+      if (pdfList) {
+        pdfList.innerHTML = '<p class="text-red-500">加载PDF列表失败</p>';
+      }
+    }
+  } catch (error) {
+    const pdfList = document.getElementById('pdfList');
+    if (pdfList) {
+      pdfList.innerHTML = '<p class="text-red-500">网络错误</p>';
+    }
+  }
+}
+
+// 显示PDF列表
+function displayPdfs(pdfs) {
+  const pdfList = document.getElementById('pdfList');
+  if (!pdfList) return;
+
+  if (!pdfs || pdfs.length === 0) {
+    pdfList.innerHTML = '<p class="text-gray-500">暂无PDF文件</p>';
+    return;
+  }
+
+  pdfList.innerHTML = pdfs.map(pdf => {
+    const isGlobal = pdf.source === 'global';
+    const bgColor = isGlobal ? 'bg-blue-50' : 'bg-gray-50';
+    const sourceText = isGlobal ? '系统' : '个人';
+    const sourceColor = isGlobal ? 'text-blue-600' : 'text-gray-600';
+    const deleteButton = isGlobal ? '' : `<button onclick="deletePdf('${pdf.name}')" class="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600">删除</button>`;
+    
+    return `
+      <div class="flex items-center justify-between p-3 ${bgColor} rounded-lg">
+        <div class="flex-1">
+          <div class="font-medium">${pdf.name}</div>
+          <div class="text-sm text-gray-500">上传时间：${new Date(pdf.upload_time).toLocaleString()}</div>
+          <div class="text-xs ${sourceColor} mt-1">来源：${sourceText}</div>
+        </div>
+        ${deleteButton}
+      </div>
+    `;
+  }).join('');
+}
+
+// 删除PDF
+async function deletePdf(filename) {
+  if (!confirm(`确定要删除 "${filename}" 吗？`)) {
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('请先登录');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/pdfs/${encodeURIComponent(filename)}?token=${encodeURIComponent(token)}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      alert('PDF删除成功');
+      loadPdfList(); // 重新加载列表
+    } else {
+      const error = await response.json();
+      alert(`删除失败: ${error.detail || '未知错误'}`);
+    }
+  } catch (error) {
+    alert('网络错误，请重试');
+  }
+}
 </script>
+
+<!-- 知识库管理Modal -->
+<div id="knowledgeBaseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between p-6 border-b">
+      <h2 class="text-2xl font-bold">知识库管理</h2>
+      <button onclick="hideKnowledgeBaseModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <!-- 上传新PDF -->
+      <div class="bg-gray-50 p-6 rounded-lg mb-6">
+        <h3 class="text-xl font-semibold mb-4">上传新PDF</h3>
+        <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
+          <div>
+            <label for="pdfFile" class="block text-sm font-medium text-gray-700">选择PDF文件</label>
+            <input type="file" id="pdfFile" name="file" accept="application/pdf" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" required />
+            <p class="mt-1 text-sm text-gray-500">支持PDF文件，最大文件大小：200MB</p>
+          </div>
+          
+          <!-- 进度条 -->
+          <div id="uploadProgress" class="hidden">
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+              <div id="progressBar" class="bg-orange-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-sm text-gray-600 mt-1">上传进度：0%</p>
+          </div>
+          
+          <button type="submit" id="uploadButton" class="bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">上传PDF</button>
+        </form>
+        <div id="uploadMessage" class="mt-4"></div>
+      </div>
+
+      <!-- 现有PDF列表 -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-xl font-semibold mb-4">现有PDF文件</h3>
+        <div id="pdfList" class="space-y-2">
+          <!-- PDF列表将在这里动态加载 -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
