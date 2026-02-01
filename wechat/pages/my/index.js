@@ -1,17 +1,18 @@
 import useToastBehavior from '~/behaviors/useToast';
+import { me } from '~/api/user';
 
 Page({
   behaviors: [useToastBehavior],
 
   data: {
-    isLoad: true,
+    isLoad: false,
     personalInfo: {
-      nickname: '考研学生',
+      nickname: '加载中...',
       avatar: '/static/chat/avatar.png',
-      level: '初级',
-      score: 2450,
-      totalQuestions: 1250,
-      correctRate: '72%',
+      level: '未知',
+      score: 0,
+      totalQuestions: 0,
+      correctRate: '0%',
     },
     settingList: [
       { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
@@ -19,13 +20,36 @@ Page({
   },
 
   onLoad() {
-    // 页面加载逻辑
+    this.loadUserInfo();
   },
 
   onShow() {
     const Token = wx.getStorageSync('access_token');
     if (Token) {
-      this.setData({ isLoad: true });
+      this.loadUserInfo();
+    } else {
+      this.setData({ isLoad: false });
+    }
+  },
+
+  async loadUserInfo() {
+    try {
+      const userInfo = await me();
+      
+      this.setData({
+        isLoad: true,
+        personalInfo: {
+          nickname: userInfo.username,
+          avatar: userInfo.avatar || '/static/chat/avatar.png',
+          level: '初级',
+          score: 0,
+          totalQuestions: 0,
+          correctRate: '0%',
+        },
+      });
+    } catch (error) {
+      // 如果获取用户信息失败，可能是没有登录
+      this.setData({ isLoad: false });
     }
   },
 
@@ -42,5 +66,23 @@ Page({
     } else {
       this.onShowToast('#t-toast', name);
     }
+  },
+
+  // 登出功能
+  onLogout() {
+    wx.showModal({
+      title: '确认登出',
+      content: '确定要登出吗?',
+      success: (res) => {
+        if (res.confirm) {
+          wx.removeStorageSync('access_token');
+          wx.removeStorageSync('userInfo');
+          this.setData({ isLoad: false });
+          wx.switchTab({
+            url: '/pages/session/index',
+          });
+        }
+      },
+    });
   },
 });

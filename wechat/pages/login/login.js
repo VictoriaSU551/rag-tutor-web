@@ -1,3 +1,5 @@
+import { register, login } from '~/api/auth';
+
 Page({
   data: {
     phoneNumber: '',
@@ -10,6 +12,7 @@ Page({
       password: '',
     },
     radioValue: '',
+    isLoading: false,
   },
 
   changeSubmit() {
@@ -62,13 +65,83 @@ Page({
     this.setData({ isPasswordLogin: !this.data.isPasswordLogin, isSubmit: false });
   },
 
-  login() {
+  async login() {
     // 登录逻辑
-    if (this.data.isPasswordLogin) {
-      wx.setStorageSync('access_token', 'token_placeholder');
-      wx.switchTab({
-        url: `/pages/my/index`,
+    if (this.data.isLoading) return;
+
+    const { account, password } = this.data.passwordInfo;
+
+    this.setData({ isLoading: true });
+
+    try {
+      const res = await login(account, password);
+      
+      // 保存token
+      wx.setStorageSync('access_token', res.token);
+      
+      // 保存用户信息
+      wx.setStorageSync('userInfo', JSON.stringify(res.user));
+
+      wx.showToast({
+        title: '登录成功',
+        icon: 'success',
+        duration: 1500,
       });
+
+      // 延迟后跳转到我的页面
+      setTimeout(() => {
+        wx.switchTab({
+          url: '/pages/my/index',
+        });
+      }, 1500);
+    } catch (error) {
+      wx.showToast({
+        title: error.detail || '登录失败',
+        icon: 'none',
+        duration: 2000,
+      });
+    } finally {
+      this.setData({ isLoading: false });
+    }
+  },
+
+  async register() {
+    // 注册逻辑
+    if (this.data.isLoading) return;
+
+    const { account, password } = this.data.passwordInfo;
+
+    this.setData({ isLoading: true });
+
+    try {
+      const res = await register(account, password);
+      
+      // 保存token
+      wx.setStorageSync('access_token', res.token);
+      
+      // 保存用户信息
+      wx.setStorageSync('userInfo', JSON.stringify(res.user));
+
+      wx.showToast({
+        title: '注册成功',
+        icon: 'success',
+        duration: 1500,
+      });
+
+      // 延迟后跳转到我的页面
+      setTimeout(() => {
+        wx.switchTab({
+          url: '/pages/my/index',
+        });
+      }, 1500);
+    } catch (error) {
+      wx.showToast({
+        title: error.detail || '注册失败',
+        icon: 'none',
+        duration: 2000,
+      });
+    } finally {
+      this.setData({ isLoading: false });
     }
   },
 });
