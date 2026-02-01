@@ -7,7 +7,7 @@ import request from './request';
  */
 export const getCurrentQuiz = (sessionId) => {
   const token = wx.getStorageSync('access_token');
-  return request('/quiz/current', 'GET', { token, session_id: sessionId });
+  return request('/api/quiz/current', 'GET', { token, session_id: sessionId });
 };
 
 /**
@@ -18,7 +18,7 @@ export const getCurrentQuiz = (sessionId) => {
  */
 export const submitQuizAnswer = (sessionId, answer) => {
   const token = wx.getStorageSync('access_token');
-  return request(`/quiz/answer`, 'POST', {
+  return request(`/api/quiz/answer`, 'POST', {
     token,
     session_id: sessionId,
     answer,
@@ -33,7 +33,7 @@ export const submitQuizAnswer = (sessionId, answer) => {
  */
 export const addWrongQuestion = (sessionId, userFirstAnswer) => {
   const token = wx.getStorageSync('access_token');
-  return request('/quiz/add_wrong', 'POST', {
+  return request('/api/quiz/add_wrong', 'POST', {
     token,
     session_id: sessionId,
     user_first_answer: userFirstAnswer,
@@ -46,7 +46,7 @@ export const addWrongQuestion = (sessionId, userFirstAnswer) => {
  */
 export const getWrongBook = () => {
   const token = wx.getStorageSync('access_token');
-  return request('/wrongbook', 'GET', { token });
+  return request('/api/wrongbook', 'GET', { token });
 };
 
 /**
@@ -56,7 +56,7 @@ export const getWrongBook = () => {
  */
 export const deleteWrongQuestion = (index) => {
   const token = wx.getStorageSync('access_token');
-  return request(`/wrongbook/${index}`, 'DELETE', { token });
+  return request(`/api/wrongbook/${index}`, 'DELETE', { token });
 };
 
 export default {

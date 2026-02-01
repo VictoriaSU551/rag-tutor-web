@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..auth import parse_token
+from ..auth import parse_token, get_token_from_request
 from .. import models
 from ..schemas import ChatIn
 from ..rag.retriever import Retriever
@@ -83,10 +83,13 @@ def get_retriever(user_id: int):
     return _retrievers[cache_key]
 
 @router.get("/sessions")
-def get_sessions(token: str, db: Session = Depends(get_db)):
+def get_sessions(token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """获取用户的所有会话列表"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -94,10 +97,13 @@ def get_sessions(token: str, db: Session = Depends(get_db)):
     return [{"id": s.id, "title": s.title, "created_at": s.created_at, "updated_at": s.updated_at} for s in sessions]
 
 @router.post("/sessions")
-def create_session(token: str, db: Session = Depends(get_db)):
+def create_session(token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """创建新会话"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -108,10 +114,13 @@ def create_session(token: str, db: Session = Depends(get_db)):
     return {"id": session.id, "title": session.title}
 
 @router.get("/sessions/{session_id}")
-def get_session_detail(session_id: str, token: str, db: Session = Depends(get_db)):
+def get_session_detail(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """获取会话详情及聊天记录"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -135,13 +144,17 @@ def get_session_detail(session_id: str, token: str, db: Session = Depends(get_db
     }
 
 @router.get("/sessions/{session_id}/chat")
-async def chat_stream(session_id: str, token: str, q: str = "", difficulty: str = "medium", db: Session = Depends(get_db)):
+async def chat_stream(session_id: str, token: str = None, q: str = "", difficulty: str = "medium", request: Request = None, db: Session = Depends(get_db)):
     """
     流式对话，支持SSE
-    前端用 EventSource: /api/sessions/{session_id}/chat?token=...&q=...
+    前端用 GET /api/sessions/{session_id}/chat?token=...&q=...
+    或通过 Authorization header
     """
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -231,10 +244,13 @@ async def chat_stream(session_id: str, token: str, q: str = "", difficulty: str 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
 
 @router.delete("/sessions/{session_id}")
-def delete_session(session_id: str, token: str, db: Session = Depends(get_db)):
+def delete_session(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """删除会话"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -250,13 +266,16 @@ def delete_session(session_id: str, token: str, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 @router.post("/sessions/{session_id}/generate_title")
-def generate_title(session_id: str, token: str, db: Session = Depends(get_db)):
+def generate_title(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """自动生成会话标题（基于第一条消息）
     格式：emoji + 空格 + 名词短语
     例如：📖 操作系统基础概念
     """
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

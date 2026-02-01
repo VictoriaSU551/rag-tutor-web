@@ -1,4 +1,4 @@
-import config from '~/config';
+import config from '../config/index';
 
 const { baseUrl } = config;
 
@@ -22,7 +22,6 @@ export const streamChat = (sessionId, question, difficulty = 'medium', onMessage
     url: chatUrl,
     method: 'GET',
     data: {
-      token,
       q: question,
       difficulty,
     },
@@ -78,7 +77,7 @@ export const generateTitle = (sessionId) => {
         'content-type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      data: { token },
+      data: {},
       success(res) {
         if (res.statusCode === 200) {
           resolve(res.data);

@@ -3,7 +3,8 @@
     "t-navbar": "tdesign-miniprogram/navbar/navbar",
     "t-avatar": "tdesign-miniprogram/avatar/avatar",
     "t-loading": "tdesign-miniprogram/loading/loading",
-    "t-button": "tdesign-miniprogram/button/button"
+    "t-button": "tdesign-miniprogram/button/button",
+    "decode": "../../towxml/decode"
   },
   "navigationStyle": "custom"
 }

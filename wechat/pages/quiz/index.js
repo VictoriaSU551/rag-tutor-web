@@ -4,7 +4,7 @@ import {
   addWrongQuestion, 
   getWrongBook,
   deleteWrongQuestion 
-} from '~/api/quiz';
+} from '../../api/quiz';
 
 Page({
   data: {

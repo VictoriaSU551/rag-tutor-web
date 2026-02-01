@@ -1,6 +1,7 @@
 // pages/chat/index.js
-import { getSessionDetail } from '~/api/session';
-import { streamChat } from '~/api/chat';
+import { getSessionDetail } from '../../api/session';
+import { streamChat } from '../../api/chat';
+const towxml = require('../../towxml/towxml.js');
 
 Page({
   data: {
@@ -30,19 +31,47 @@ Page({
 
   onUnload() {},
 
+  formatSourcesAsMarkdown(sources) {
+    if (!sources || sources.length === 0) return '';
+    return sources
+      .map(source => {
+        const book = source.book.replace(/\.(pdf|txt|doc|docx)$/i, '');
+        return `- ${book} - 第${source.page}页`;
+      })
+      .join('\n');
+  },
+
+  renderMarkdown(markdown) {
+    if (!markdown) return null;
+    try {
+      return towxml(markdown, 'markdown', {
+        theme: 'light',
+        useInline: false
+      });
+    } catch (e) {
+      console.error('Markdown render error:', e);
+      return null;
+    }
+  },
+
   async loadSessionDetail() {
     try {
       const sessionDetail = await getSessionDetail(this.userId);
       
       // 转换消息格式
-      const messages = (sessionDetail.messages || []).map((msg) => ({
-        messageId: msg.timestamp,
-        from: msg.role === 'user' ? 0 : 1,
-        content: msg.content,
-        time: msg.timestamp * 1000,
-        read: true,
-        sources: msg.sources || [],
-      }));
+      const messages = (sessionDetail.messages || []).map((msg) => {
+        const sourcesMarkdown = msg.sources ? this.formatSourcesAsMarkdown(msg.sources) : '';
+        return {
+          messageId: msg.timestamp,
+          from: msg.role === 'user' ? 0 : 1,
+          content: msg.content,
+          contentNodes: msg.role === 'assistant' ? this.renderMarkdown(msg.content) : null,
+          time: msg.timestamp * 1000,
+          read: true,
+          sourcesMarkdown,
+          sourcesNodes: sourcesMarkdown ? this.renderMarkdown('**知识来源：**\n' + sourcesMarkdown) : null,
+        };
+      });
 
       this.setData({
         userId: sessionDetail.id,
@@ -113,11 +142,13 @@ Page({
             
             if (lastMessage && lastMessage.from === 1) {
               lastMessage.content += data.text;
+              lastMessage.contentNodes = this.renderMarkdown(lastMessage.content);
             } else {
               msgs.push({
                 messageId: Date.now(),
                 from: 1,
                 content: data.text,
+                contentNodes: this.renderMarkdown(data.text),
                 time: Date.now(),
                 read: true,
               });
@@ -126,11 +157,12 @@ Page({
             this.setData({ messages: msgs });
             wx.nextTick(this.scrollToBottom);
           } else if (data.type === 'meta') {
-            // 处理源信息
+            // 处理源信息，渲染为markdown格式
             const msgs = this.data.messages;
             const lastMessage = msgs[msgs.length - 1];
             if (lastMessage && lastMessage.from === 1) {
-              lastMessage.sources = data.sources || [];
+              lastMessage.sourcesMarkdown = this.formatSourcesAsMarkdown(data.sources || []);
+              lastMessage.sourcesNodes = lastMessage.sourcesMarkdown ? this.renderMarkdown('**知识来源：**\n' + lastMessage.sourcesMarkdown) : null;
             }
             this.setData({ messages: msgs });
           } else if (data.type === 'exercise') {

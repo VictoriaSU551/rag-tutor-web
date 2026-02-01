@@ -1,5 +1,5 @@
 // pages/session/index.js
-import { getSessions, createSession, deleteSession } from '~/api/session';
+import { getSessions, createSession, deleteSession } from '../../api/session';
 
 Page({
   data: {

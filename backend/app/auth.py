@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+from fastapi import Request
 
 from .config import settings
 
@@ -37,3 +38,16 @@ def parse_token(token: str) -> str:
         return payload["sub"]
     except (JWTError, KeyError, ValueError):
         raise ValueError("无效或过期的登录状态")
+
+def get_token_from_request(token: str = None, authorization: str = None) -> str:
+    """从查询参数或 Authorization header 中提取 token"""
+    if token:
+        return token
+    
+    if authorization:
+        # 支持 "Bearer <token>" 格式
+        if authorization.startswith("Bearer "):
+            return authorization[7:]
+        return authorization
+    
+    raise ValueError("未提供有效的认证信息")

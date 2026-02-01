@@ -1,80 +1,72 @@
 <t-navbar left-arrow />
 <view class="page login">
-  <view class="login__title"> 欢迎登录 TDsign </view>
+  <view class="login__title">{{ isLogin ? '欢迎登录' : '创建账户' }}</view>
+  
   <view class="login__content">
+    <!-- 用户名输入框 -->
     <view class="login__input">
-      <view class="login__password" wx:if="{{isPasswordLogin}}">
-        <t-input
-          label="账号"
-          placeholder="请输入手机号/邮箱"
-          value="{{passwordInfo.account}}"
-          bindchange="onAccountChange"
-        ></t-input>
-        <t-input
-          label="密码"
-          placeholder="请输入密码"
-          type="password"
-          clearable
-          value="{{passwordInfo.password}}"
-          bindchange="onPasswordChange"
-        />
-      </view>
-
-      <t-input wx:else value="{{phoneNumber}}" placeholder="请输入手机号" type="number" bindchange="onPhoneInput">
-        <view slot="label" class="input-label">
-          <text>+86</text>
-          <t-icon name="caret-down-small" size="40rpx" class="input-iconl"></t-icon>
-        </view>
-      </t-input>
+      <t-input
+        label="用户名"
+        placeholder="请输入用户名"
+        value="{{username}}"
+        bindchange="onUsernameChange"
+      ></t-input>
     </view>
 
-    <view class="login__tips">未注册的手机号验证通过后将自动注册</view>
-
-    <t-radio-group allow-uncheck borderless value="{{radioValue}}" bind:change="onCheckChange">
-      <t-radio
-        label="同意《协议条款》"
-        value="agree"
-        t-class="radio-class"
-        t-class-icon="radio-class-icon"
-        t-class-label="radio-class-label"
+    <!-- 密码输入框 -->
+    <view class="login__input">
+      <t-input
+        label="密码"
+        placeholder="请输入密码"
+        type="password"
+        clearable
+        value="{{password}}"
+        bindchange="onPasswordChange"
       />
-    </t-radio-group>
+    </view>
 
+    <!-- 注册模式：确认密码输入框 -->
+    <view class="login__input" wx:if="{{!isLogin}}">
+      <t-input
+        label="确认密码"
+        placeholder="请再次输入密码"
+        type="password"
+        clearable
+        value="{{confirmPassword}}"
+        bindchange="onConfirmPasswordChange"
+      />
+    </view>
+
+    <!-- 同意条款 -->
+    <view class="login__check">
+      <t-checkbox-group bind:change="onCheckChange">
+        <t-checkbox
+          value="agree"
+          label="我同意《用户协议》和《隐私政策》"
+        />
+      </t-checkbox-group>
+    </view>
+
+    <!-- 提交按钮 -->
     <view class="login__button">
-      <t-button theme="primary" size="large" block disabled="{{!isSubmit}}" bindtap="login">
-        {{ isPasswordLogin ? '登录' : '验证并登录' }}
+      <t-button 
+        theme="primary" 
+        size="large" 
+        block 
+        disabled="{{!isSubmit}}" 
+        loading="{{isLoading}}"
+        bindtap="submitForm"
+      >
+        {{ isLogin ? '登录' : '注册' }}
       </t-button>
     </view>
 
-    <view class="login__password--forget" wx:if="{{isPasswordLogin}}">
-      <text>忘记密码？</text>
-      <t-link theme="primary" size="small">找回密码</t-link>
-    </view>
-  </view>
-
-  <view class="login__others">
-    <text class="login__others-label">其他方式</text>
-    <view class="login__others-buttons">
-      <t-button class="button" variant="outline" theme="default" size="medium" shape="round" bindtap="changeLogin">
-        {{isPasswordLogin ? '验证码登录' : '密码登录' }}
-      </t-button>
-      <t-button
-        class="button"
-        variant="outline"
-        theme="default"
-        size="medium"
-        icon="logo-wechat-stroke"
-        shape="circle"
-      ></t-button>
-      <t-button class="button" variant="outline" theme="default" size="medium" icon="logo-qq" shape="circle"></t-button>
-      <t-button
-        class="button"
-        variant="outline"
-        theme="default"
-        size="medium"
-        icon="logo-wecom"
-        shape="circle"
-      ></t-button>
+    <!-- 切换登录/注册 -->
+    <view class="login__toggle">
+      <text class="toggle-text">{{ isLogin ? '没有账户？' : '已有账户？' }}</text>
+      <text class="toggle-link" bindtap="toggleMode">
+        {{ isLogin ? '立即注册' : '立即登录' }}
+      </text>
     </view>
   </view>
 </view>

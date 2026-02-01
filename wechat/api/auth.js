@@ -7,7 +7,7 @@ import request from './request';
  * @returns {Promise}
  */
 export const register = (username, password) => {
-  return request('/auth/register', 'POST', {
+  return request('/api/register', 'POST', {
     username,
     password,
   });
@@ -20,7 +20,7 @@ export const register = (username, password) => {
  * @returns {Promise}
  */
 export const login = (username, password) => {
-  return request('/auth/login', 'POST', {
+  return request('/api/login', 'POST', {
     username,
     password,
   });
@@ -31,8 +31,7 @@ export const login = (username, password) => {
  * @returns {Promise}
  */
 export const getUserInfo = () => {
-  const token = wx.getStorageSync('access_token');
-  return request('/me', 'GET', { token });
+  return request('/api/me', 'GET');
 };
 
 export default {

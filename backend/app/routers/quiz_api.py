@@ -1,8 +1,8 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..auth import parse_token
+from ..auth import parse_token, get_token_from_request
 from .. import models
 from ..schemas import QuizAnswerIn, AddWrongIn, AddManualWrongIn
 
@@ -23,10 +23,13 @@ def save_session_meta(session: models.Session, meta: dict, db: Session):
     db.commit()
 
 @router.get("/quiz/current")
-def quiz_current(token: str, session_id: str, db: Session = Depends(get_db)):
+def quiz_current(token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
     """获取当前会话中的待答题"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     
@@ -51,10 +54,13 @@ def quiz_current(token: str, session_id: str, db: Session = Depends(get_db)):
     }
 
 @router.post("/quiz/answer")
-def quiz_answer(token: str, session_id: str, data: QuizAnswerIn, db: Session = Depends(get_db)):
+def quiz_answer(data: QuizAnswerIn, token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
     """提交练习题答案"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     
@@ -101,10 +107,13 @@ def quiz_answer(token: str, session_id: str, data: QuizAnswerIn, db: Session = D
     }
 
 @router.post("/quiz/add_wrong")
-def add_wrong(token: str, session_id: str, data: AddWrongIn, db: Session = Depends(get_db)):
+def add_wrong(data: AddWrongIn, token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
     """将答错的题目加入错题本（存储在 session.meta 中）"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     
@@ -140,10 +149,13 @@ def add_wrong(token: str, session_id: str, data: AddWrongIn, db: Session = Depen
     return {"ok": True}
 
 @router.post("/quiz/add_manual_wrong")
-def add_manual_wrong(token: str, data: AddManualWrongIn, db: Session = Depends(get_db)):
+def add_manual_wrong(data: AddManualWrongIn, token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """手动将题目加入用户错题本"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     
@@ -173,10 +185,13 @@ def add_manual_wrong(token: str, data: AddManualWrongIn, db: Session = Depends(g
     return {"ok": True}
 
 @router.get("/wrongbook")
-def wrongbook(token: str, db: Session = Depends(get_db)):
+def wrongbook(token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """获取用户的错题本"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     
@@ -198,10 +213,13 @@ def wrongbook(token: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/wrongbook/{index}")
-def delete_wrong_item(token: str, index: int, db: Session = Depends(get_db)):
+def delete_wrong_item(token: str = None, index: int = None, request: Request = None, db: Session = Depends(get_db)):
     """删除用户错题本中指定索引的题目（前端使用的是 reversed 列表索引）"""
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

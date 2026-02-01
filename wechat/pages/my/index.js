@@ -1,5 +1,5 @@
-import useToastBehavior from '~/behaviors/useToast';
-import { me } from '~/api/user';
+import useToastBehavior from '../../behaviors/useToast';
+import { me } from '../../api/user';
 
 Page({
   behaviors: [useToastBehavior],
@@ -7,13 +7,23 @@ Page({
   data: {
     isLoad: false,
     personalInfo: {
-      nickname: '加载中...',
-      avatar: '/static/chat/avatar.png',
-      level: '未知',
-      score: 0,
-      totalQuestions: 0,
-      correctRate: '0%',
+      name: '加载中...',
+      image: '/static/chat/avatar.png',
+      star: '未知',
+      city: '地球',
     },
+    gridList: [
+      { name: '全部', icon: 'view-list', type: 'all' },
+      { name: '完成', icon: 'check-circle-filled', type: 'done' },
+      { name: '进行中', icon: 'circle', type: 'process' },
+      { name: '暂存', icon: 'bookmark', type: 'save' },
+    ],
+    service: [
+      { name: '成就', image: '/static/chat/avatar.png' },
+      { name: '排行', image: '/static/chat/avatar.png' },
+      { name: '反馈', image: '/static/chat/avatar.png' },
+      { name: '关于', image: '/static/chat/avatar.png' },
+    ],
     settingList: [
       { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
     ],
@@ -34,20 +44,29 @@ Page({
 
   async loadUserInfo() {
     try {
+      const token = wx.getStorageSync('access_token');
+      console.log('获取用户信息 - token:', token);
+      
+      if (!token) {
+        console.log('没有 token，用户未登录');
+        this.setData({ isLoad: false });
+        return;
+      }
+      
       const userInfo = await me();
+      console.log('获取到用户信息:', userInfo);
       
       this.setData({
         isLoad: true,
         personalInfo: {
-          nickname: userInfo.username,
-          avatar: userInfo.avatar || '/static/chat/avatar.png',
-          level: '初级',
-          score: 0,
-          totalQuestions: 0,
-          correctRate: '0%',
+          name: userInfo.username || userInfo.name || '用户',
+          image: userInfo.avatar || '/static/chat/avatar.png',
+          star: '学者',
+          city: '地球',
         },
       });
     } catch (error) {
+      console.error('加载用户信息失败:', error);
       // 如果获取用户信息失败，可能是没有登录
       this.setData({ isLoad: false });
     }

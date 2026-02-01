@@ -1,10 +1,10 @@
 import os
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..db import get_db
 from .. import models
 from ..schemas import RegisterIn, LoginIn
-from ..auth import validate_username, validate_password, hash_password, verify_password, create_token
+from ..auth import validate_username, validate_password, hash_password, verify_password, create_token, parse_token, get_token_from_request
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -38,11 +38,12 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     return {"token": token, "user": {"id": user.id, "username": user.name, "avatar": user.avatar_url}}
 
 @router.post("/avatar")
-def upload_avatar(token: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    # 前端用 ?token=xxx 简化（也可以改Authorization Bearer）
-    from ..auth import parse_token
+def upload_avatar(token: str = None, request: Request = None, file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
-        uid = parse_token(token)
+        # 支持从查询参数或 Authorization header 提取 token
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

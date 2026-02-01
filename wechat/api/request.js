@@ -1,7 +1,7 @@
-import config from '~/config';
+import config from '../config/index';
 
-const { baseUrl } = config;
-const delay = config.isMock ? 500 : 0;
+const { baseUrl, isMock } = config;
+const delay = isMock ? 500 : 0;
 
 function request(url, method = 'GET', data = {}) {
   const header = {
@@ -20,12 +20,11 @@ function request(url, method = 'GET', data = {}) {
   let requestData = {};
 
   if (method === 'GET' && Object.keys(data).length > 0) {
-    // 将参数转换为 URL 查询字符串
-    const queryParams = new URLSearchParams();
-    Object.keys(data).forEach((key) => {
-      queryParams.append(key, data[key]);
-    });
-    requestUrl = requestUrl + '?' + queryParams.toString();
+    // 将参数转换为 URL 查询字符串（微信小程序中不支持 URLSearchParams）
+    const queryParams = Object.keys(data)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+      .join('&');
+    requestUrl = requestUrl + '?' + queryParams;
   } else if (method !== 'GET') {
     // 非 GET 请求，数据放在 body 中
     requestData = data;

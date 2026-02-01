@@ -1,4 +1,5 @@
 <wxs src="./index.wxs" module="utils" />
+<import src="../../towxml/decode.wxml" />
 
 <t-navbar class="nav-bar" title="{{ name }}" left-arrow />
 
@@ -34,7 +35,14 @@
           <view class="message-container">
             <view class="message-tag other-tag"></view>
             <view class="message other">
-              <text space="nbsp">{{ item.content }}</text>
+              <!-- Markdown 渲染的消息内容 -->
+              <template wx:if="{{ item.contentNodes }}" is="decode" data="{{ nodes: item.contentNodes }}" />
+              <text wx:else space="nbsp">{{ item.content }}</text>
+              
+              <!-- 知识来源 Markdown 格式 -->
+              <view wx:if="{{ item.sourcesNodes }}" class="sources-embedded">
+                <template is="decode" data="{{ nodes: item.sourcesNodes }}" />
+              </view>
             </view>
           </view>
         </view>

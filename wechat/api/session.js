@@ -6,7 +6,7 @@ import request from './request';
  */
 export const getSessions = () => {
   const token = wx.getStorageSync('access_token');
-  return request('/sessions', 'GET', { token });
+  return request('/api/sessions', 'GET', { token });
 };
 
 /**
@@ -15,7 +15,7 @@ export const getSessions = () => {
  */
 export const createSession = () => {
   const token = wx.getStorageSync('access_token');
-  return request('/sessions', 'POST', { token });
+  return request('/api/sessions', 'POST', { token });
 };
 
 /**
@@ -25,7 +25,7 @@ export const createSession = () => {
  */
 export const getSessionDetail = (sessionId) => {
   const token = wx.getStorageSync('access_token');
-  return request(`/sessions/${sessionId}`, 'GET', { token });
+  return request(`/api/sessions/${sessionId}`, 'GET', { token });
 };
 
 /**
@@ -35,7 +35,7 @@ export const getSessionDetail = (sessionId) => {
  */
 export const deleteSession = (sessionId) => {
   const token = wx.getStorageSync('access_token');
-  return request(`/sessions/${sessionId}`, 'DELETE', { token });
+  return request(`/api/sessions/${sessionId}`, 'DELETE', { token });
 };
 
 export default {
