@@ -8,7 +8,13 @@
     "pages/login/login"
   ],
   "usingComponents": {
-    "t-toast": "tdesign-miniprogram/toast/toast"
+    "t-toast": "tdesign-miniprogram/toast/toast",
+    "decode": "towxml/decode",
+    "audio-player": "towxml/audio-player/audio-player",
+    "latex": "towxml/latex/latex",
+    "table": "towxml/table/table",
+    "todogroup": "towxml/todogroup/todogroup",
+    "yuml": "towxml/yuml/yuml"
   },
   "subpackages": [],
   "window": {

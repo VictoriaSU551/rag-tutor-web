@@ -24,6 +24,14 @@ Page({
   async getMessageList() {
     this.setData({ loading: true });
     try {
+      // 检查登录状态
+      const token = wx.getStorageSync('access_token');
+      if (!token) {
+        this.setData({ loading: false });
+        wx.navigateTo({ url: '/pages/login/login' });
+        return;
+      }
+      
       const sessions = await getSessions();
       
       // 格式化会话列表

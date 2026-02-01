@@ -1,7 +1,7 @@
 // pages/chat/index.js
 import { getSessionDetail } from '../../api/session';
 import { streamChat } from '../../api/chat';
-const towxml = require('../../towxml/towxml.js');
+const towxml = require('../../towxml/index.js');
 
 Page({
   data: {
@@ -15,7 +15,11 @@ Page({
     keyboardHeight: 0,
     loading: true,
     sending: false,
+    pendingSources: null, // 缓存待处理的知识来源
   },
+
+  renderDebounceTimer: null,
+  contentUpdateCount: 0, // 记录内容更新数
 
   onLoad(options) {
     const targetId = options.userId || 1;
@@ -33,12 +37,13 @@ Page({
 
   formatSourcesAsMarkdown(sources) {
     if (!sources || sources.length === 0) return '';
-    return sources
+    const sourcesList = sources
       .map(source => {
         const book = source.book.replace(/\.(pdf|txt|doc|docx)$/i, '');
         return `- ${book} - 第${source.page}页`;
       })
       .join('\n');
+    return `📚 **知识来源：**\n${sourcesList}`;
   },
 
   renderMarkdown(markdown) {
@@ -52,6 +57,41 @@ Page({
       console.error('Markdown render error:', e);
       return null;
     }
+  },
+
+  updateMessageMarkdown() {
+    // 延迟更新markdown渲染，用于流式输出完成后的最终渲染
+    const msgs = this.data.messages;
+    const lastMessage = msgs[msgs.length - 1];
+    if (lastMessage && lastMessage.from === 1 && lastMessage.content) {
+      lastMessage.contentNodes = this.renderMarkdown(lastMessage.content);
+    }
+    this.setData({ messages: msgs });
+  },
+
+  updateMessageMarkdownDebounce() {
+    // 防抖渲染markdown - 只在积累足够内容后才渲染
+    // 清除之前的定时器
+    if (this.renderDebounceTimer) {
+      clearTimeout(this.renderDebounceTimer);
+    }
+
+    // 设置新的定时器 - 最长等待200ms进行一次渲染
+    this.renderDebounceTimer = setTimeout(() => {
+      this.updateMessageMarkdown();
+      this.contentUpdateCount = 0; // 计数器重置
+      this.renderDebounceTimer = null;
+    }, 200);
+  },
+
+  shouldRenderMarkdown(textLength) {
+    // 判断是否应该渲染 - 当累计文本达到300字符时（优先保证文本流畅输出）
+    this.contentUpdateCount += textLength;
+    if (this.contentUpdateCount >= 300) {
+      this.contentUpdateCount = 0; // 重置计数
+      return true;
+    }
+    return false;
   },
 
   async loadSessionDetail() {
@@ -69,7 +109,7 @@ Page({
           time: msg.timestamp * 1000,
           read: true,
           sourcesMarkdown,
-          sourcesNodes: sourcesMarkdown ? this.renderMarkdown('**知识来源：**\n' + sourcesMarkdown) : null,
+          sourcesNodes: sourcesMarkdown ? this.renderMarkdown(sourcesMarkdown) : null,
         };
       });
 
@@ -80,7 +120,7 @@ Page({
         loading: false,
       });
 
-      wx.nextTick(this.scrollToBottom);
+      wx.nextTick(() => this.scrollToBottom());
     } catch (error) {
       wx.showToast({
         title: '加载会话失败',
@@ -95,7 +135,7 @@ Page({
     const { height } = event.detail;
     if (!height) return;
     this.setData({ keyboardHeight: height });
-    wx.nextTick(this.scrollToBottom);
+    wx.nextTick(() => this.scrollToBottom());
   },
 
   handleBlur() {
@@ -125,7 +165,7 @@ Page({
 
     const messages = [...this.data.messages, userMessage];
     this.setData({ input: '', messages });
-    wx.nextTick(this.scrollToBottom);
+    wx.nextTick(() => this.scrollToBottom());
 
     try {
       // 发送到服务器并获取流式回复
@@ -134,41 +174,67 @@ Page({
         content,
         'medium',
         (data) => {
-          // 处理流式消息
-          if (data.type === 'delta') {
-            // 更新最后一条助手消息
+          // WebSocket 流式处理
+          if (data.type === 'meta') {
+            // 缓存知识来源
+            this.setData({ 
+              pendingSources: data.sources || []
+            });
+          } else if (data.type === 'delta') {
+            // 只更新纯文本，不渲染markdown
             const msgs = this.data.messages;
-            const lastMessage = msgs[msgs.length - 1];
+            let lastMessage = msgs[msgs.length - 1];
+            const pendingSources = this.data.pendingSources;
+            const textLength = data.text ? data.text.length : 0;
             
-            if (lastMessage && lastMessage.from === 1) {
-              lastMessage.content += data.text;
-              lastMessage.contentNodes = this.renderMarkdown(lastMessage.content);
-            } else {
-              msgs.push({
+            if (!lastMessage || lastMessage.from === 0) {
+              // 创建新的助手消息
+              const newMessage = {
                 messageId: Date.now(),
                 from: 1,
-                content: data.text,
-                contentNodes: this.renderMarkdown(data.text),
+                content: data.text || '',
                 time: Date.now(),
                 read: true,
-              });
+              };
+              
+              // 关联知识来源
+              if (pendingSources) {
+                newMessage.sourcesMarkdown = this.formatSourcesAsMarkdown(pendingSources);
+                newMessage.sourcesNodes = newMessage.sourcesMarkdown ? this.renderMarkdown(newMessage.sourcesMarkdown) : null;
+                this.setData({ pendingSources: null });
+              }
+              
+              msgs.push(newMessage);
+              lastMessage = msgs[msgs.length - 1];
+            } else {
+              // 只追加纯文本
+              lastMessage.content += data.text;
             }
             
+            // 快速更新UI，只显示纯文本
             this.setData({ messages: msgs });
-            wx.nextTick(this.scrollToBottom);
-          } else if (data.type === 'meta') {
-            // 处理源信息，渲染为markdown格式
-            const msgs = this.data.messages;
-            const lastMessage = msgs[msgs.length - 1];
-            if (lastMessage && lastMessage.from === 1) {
-              lastMessage.sourcesMarkdown = this.formatSourcesAsMarkdown(data.sources || []);
-              lastMessage.sourcesNodes = lastMessage.sourcesMarkdown ? this.renderMarkdown('**知识来源：**\n' + lastMessage.sourcesMarkdown) : null;
+            wx.nextTick(() => this.scrollToBottom());
+            
+            // 检查是否应该进行markdown渲染（每积累50个字符）
+            if (this.shouldRenderMarkdown(textLength)) {
+              this.updateMessageMarkdown();
+            } else {
+              // 启动防抖定时器作为backup（确保200ms内至少渲染一次）
+              if (!this.renderDebounceTimer) {
+                this.updateMessageMarkdownDebounce();
+              }
             }
-            this.setData({ messages: msgs });
           } else if (data.type === 'exercise') {
             // 处理习题（可选）
             console.log('练习题:', data.data);
           } else if (data.type === 'done') {
+            // 流式完成 - 清除防抖定时器，立即渲染最终markdown
+            if (this.renderDebounceTimer) {
+              clearTimeout(this.renderDebounceTimer);
+              this.renderDebounceTimer = null;
+            }
+            this.contentUpdateCount = 0;
+            this.updateMessageMarkdown();
             this.setData({ sending: false });
             wx.showToast({
               title: '消息已发送',

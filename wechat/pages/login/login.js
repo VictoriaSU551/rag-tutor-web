@@ -113,8 +113,17 @@ Page({
       }
 
       // 保存token和用户信息
+      console.log('登录成功，保存token:', res.token);
       wx.setStorageSync('access_token', res.token);
       wx.setStorageSync('userInfo', JSON.stringify(res.user));
+      
+      // 验证token是否被正确保存
+      const savedToken = wx.getStorageSync('access_token');
+      console.log('验证保存的token:', savedToken);
+      if (!savedToken) {
+        console.error('Token保存失败');
+        throw new Error('登录信息保存失败，请重试');
+      }
 
       wx.showToast({
         title: isLogin ? '登录成功' : '注册成功',

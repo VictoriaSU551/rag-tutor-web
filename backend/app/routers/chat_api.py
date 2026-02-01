@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -339,4 +339,131 @@ def generate_title(session_id: str, token: str = None, request: Request = None, 
     db.commit()
     
     return {"title": title, "ok": True}
+
+
+@router.websocket("/ws/chat/{session_id}")
+async def websocket_chat(websocket: WebSocket, session_id: str, token: str = None, q: str = "", difficulty: str = "medium"):
+    """
+    WebSocket 流式对话
+    前端连接：ws://baseUrl/api/ws/chat/{session_id}?token=...&q=...&difficulty=...
+    """
+    await websocket.accept()
+    db_session = None
+    
+    try:
+        # 验证 token
+        try:
+            uid = parse_token(token)
+        except ValueError as e:
+            await websocket.send_json({"type": "error", "message": f"认证失败: {str(e)}"})
+            await websocket.close(code=4001)
+            return
+
+        # 需要手动获取数据库连接
+        from ..db import SessionLocal
+        db_session = SessionLocal()
+        
+        # 获取会话
+        session_obj = db_session.query(models.Session).filter(
+            models.Session.id == session_id,
+            models.Session.user_id == uid
+        ).first()
+        
+        if not session_obj:
+            await websocket.send_json({"type": "error", "message": "会话不存在"})
+            await websocket.close(code=4004)
+            return
+
+        if not q.strip():
+            await websocket.send_json({"type": "error", "message": "问题不能为空"})
+            await websocket.close(code=4400)
+            return
+
+        # 加载聊天记录
+        chat_messages = json.loads(session_obj.chat or "[]")
+        
+        # 添加用户问题
+        import time
+        user_message = {
+            "role": "user",
+            "content": q.strip(),
+            "timestamp": int(time.time())
+        }
+        chat_messages.append(user_message)
+
+        # 获取检索器和上下文
+        retriever = get_retriever(uid)
+        contexts = retriever.search(q.strip())
+
+        # 构建提示词
+        user_prompt = build_user_prompt(q.strip(), contexts)
+        client = QwenClient()
+
+        # 发送元数据（知识来源）
+        meta = [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
+        await websocket.send_json({"type": "meta", "sources": meta})
+
+        # 流式生成回复
+        full_text = ""
+        try:
+            async for delta in client.stream_generate(SYSTEM_PROMPT, user_prompt):
+                if delta:
+                    full_text += delta
+                    # 实时发送 delta
+                    await websocket.send_json({"type": "delta", "text": delta})
+        except Exception as e:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close(code=1011)
+            return
+
+        # 保存助手回复
+        assistant_message = {
+            "role": "assistant",
+            "content": full_text,
+            "timestamp": int(time.time()),
+            "sources": [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
+        }
+        chat_messages.append(assistant_message)
+        
+        # 更新会话标题
+        if len(chat_messages) == 2:
+            session_obj.title = q.strip()[:30]
+        
+        # 保存聊天记录
+        session_obj.chat = json.dumps(chat_messages, ensure_ascii=False)
+        
+        # 生成练习题
+        exercises = []
+        try:
+            exercise_prompt = build_exercise_prompt(q.strip(), contexts, difficulty)
+            exercise_json = client.json_generate(EXERCISE_SYSTEM_PROMPT, exercise_prompt)
+            exercise_data = json.loads(exercise_json)
+            exercises.append(exercise_data)
+            
+            await websocket.send_json({"type": "exercise", "data": exercise_data})
+        except Exception as e:
+            await websocket.send_json({"type": "exercise_error", "message": str(e)})
+
+        # 保存习题
+        existing_exercises = json.loads(session_obj.exercises or "[]")
+        existing_exercises.extend(exercises)
+        session_obj.exercises = json.dumps(existing_exercises, ensure_ascii=False)
+        
+        db_session.add(session_obj)
+        db_session.commit()
+
+        # 发送完成标志
+        await websocket.send_json({"type": "done"})
+        
+    except WebSocketDisconnect:
+        print(f"WebSocket 连接断开: {session_id}")
+    except Exception as e:
+        print(f"WebSocket 错误: {str(e)}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+    finally:
+        if db_session:
+            db_session.close()
 

@@ -13,6 +13,13 @@ function request(url, method = 'GET', data = {}) {
   const tokenString = wx.getStorageSync('access_token');
   if (tokenString) {
     header.Authorization = `Bearer ${tokenString}`;
+  } else if (!url.includes('/login') && !url.includes('/register')) {
+    // 非登录/注册接口，但没有token，直接返回未登录错误
+    return Promise.reject({
+      statusCode: 401,
+      detail: '未登录，请先登录',
+      isAuthError: true
+    });
   }
 
   // 对于 GET 请求，参数应该放在 URL 中
@@ -42,6 +49,19 @@ function request(url, method = 'GET', data = {}) {
           // HTTP状态码为200才视为成功
           if (res.statusCode === 200) {
             resolve(res.data);
+          } else if (res.statusCode === 401) {
+            // 处理401未授权错误
+            wx.removeStorageSync('access_token');
+            wx.removeStorageSync('userInfo');
+            wx.showToast({
+              title: '登录已过期，请重新登录',
+              icon: 'none',
+              duration: 2000,
+            });
+            setTimeout(() => {
+              wx.navigateTo({ url: '/pages/login/login' });
+            }, 500);
+            reject(res.data || res);
           } else {
             // wx.request的特性，只要有响应就会走success回调，所以在这里判断状态，非200的均视为请求失败
             reject(res.data || res);
@@ -50,7 +70,6 @@ function request(url, method = 'GET', data = {}) {
       },
       fail(err) {
         setTimeout(() => {
-          // 断网、服务器挂了都会fail回调，直接reject即可
           reject(err);
         }, delay);
       },

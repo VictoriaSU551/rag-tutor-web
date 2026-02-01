@@ -39,6 +39,13 @@ Page({
       this.loadUserInfo();
     } else {
       this.setData({ isLoad: false });
+      // 未登录时，2秒后跳转到登录页
+      setTimeout(() => {
+        const stillNoToken = wx.getStorageSync('access_token');
+        if (!stillNoToken) {
+          wx.navigateTo({ url: '/pages/login/login' });
+        }
+      }, 2000);
     }
   },
 
