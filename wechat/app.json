@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/session/index",
+    "pages/chat/index",
+    "pages/quiz/index",
+    "pages/my/index",
+    "pages/setting/index",
+    "pages/login/login"
+  ],
+  "usingComponents": {
+    "t-toast": "tdesign-miniprogram/toast/toast"
+  },
+  "subpackages": [],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "Weixin",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "custom": true,
+    "list": [
+      {
+        "pagePath": "pages/session/index",
+        "text": "对话"
+      },
+      {
+        "pagePath": "pages/quiz/index",
+        "text": "习题"
+      },
+      {
+        "pagePath": "pages/my/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "resolveAlias": {
+    "~/*": "/*"
+  },
+  "sitemapLocation": "sitemap.json"
+}

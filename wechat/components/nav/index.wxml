@@ -1,0 +1,6 @@
+<view class="home-navbar">
+  <t-navbar title="{{ titleText }}">
+    <view slot="left">
+    </view>
+  </t-navbar>
+</view>

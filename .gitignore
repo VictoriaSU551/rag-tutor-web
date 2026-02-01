@@ -194,6 +194,13 @@ yarn-error.log*
 package-lock.json
 yarn.lock
 
+# ========== WeChat 小程序 ==========
+# 私有配置文件（包含个人AppID和敏感信息）
+wechat/project.private.config.json
+
+# 微信小程序依赖包
+wechat/miniprogram_npm/
+
 # ========== 其他 ==========
 # 测试数据
 test_data/

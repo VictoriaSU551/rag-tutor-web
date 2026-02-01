@@ -1,0 +1,152 @@
+<nav title-text="习题"></nav>
+
+<!-- 标签页切换 -->
+<view class="quiz-tabs">
+  <view
+    class="tab-item {{ activeTab === 'practice' ? 'active' : '' }}"
+    bind:tap="switchTab"
+    data-tab="practice"
+  >
+    练习题
+  </view>
+  <view
+    class="tab-item {{ activeTab === 'wrong' ? 'active' : '' }}"
+    bind:tap="switchTab"
+    data-tab="wrong"
+  >
+    错题本
+  </view>
+</view>
+
+<!-- 练习题界面 -->
+<scroll-view class="quiz-container" scroll-y wx:if="{{ activeTab === 'practice' }}">
+  <view class="quiz-question" wx:for="{{ quizList }}" wx:key="index">
+    <!-- 题目信息头 -->
+    <view class="question-header">
+      <view class="question-number">第 {{ index + 1 }} 题</view>
+      <view class="question-type">{{ item.type }}</view>
+    </view>
+
+    <!-- 题目文本 -->
+    <view class="question-text">{{ item.question }}</view>
+
+    <!-- 选项 -->
+    <view class="options-list">
+      <view
+        wx:for="{{ item.options }}"
+        wx:for-item="option"
+        wx:for-index="optionIndex"
+        wx:key="optionIndex"
+        class="option-item {{ item.userAnswer === optionIndex ? 'selected' : '' }} {{ item.submitted && item.userAnswer === optionIndex ? (item.userAnswer === item.correctAnswer ? 'correct' : 'incorrect') : '' }}"
+        bind:tap="selectAnswer"
+        data-question-index="{{ index }}"
+        data-option-index="{{ optionIndex }}"
+        data-disabled="{{ item.submitted }}"
+      >
+        <view class="option-label"></view>
+        <text>{{ option }}</text>
+      </view>
+    </view>
+
+    <!-- 答案和解析 -->
+    <view wx:if="{{ item.submitted }}" class="answer-section">
+      <view class="answer-result {{ item.userAnswer === item.correctAnswer ? 'correct' : 'incorrect' }}">
+        <view class="answer-text">
+          <text>{{ item.userAnswer === item.correctAnswer ? '✓ 正确' : '✕ 答错了，正确答案是 ' + String.fromCharCode(65 + item.correctAnswer) }}</text>
+        </view>
+      </view>
+
+      <!-- 展开解析按钮 -->
+      <view class="expand-section">
+        <view
+          class="expand-button"
+          bind:tap="toggleAnalysis"
+          data-question-index="{{ index }}"
+        >
+          <text>{{ item.showAnalysis ? '收起解析' : '展开解析' }}</text>
+          <text class="expand-icon">{{ item.showAnalysis ? '▲' : '▼' }}</text>
+        </view>
+
+        <!-- 解析内容 -->
+        <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
+          <view class="analysis-title">解析</view>
+          <text class="analysis-text">{{ item.analysis }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view wx:if="{{ !item.submitted }}" class="button-group">
+      <button
+        class="submit-btn"
+        bind:tap="submitAnswer"
+        data-question-index="{{ index }}"
+        disabled="{{ item.userAnswer === null }}"
+      >
+        提交答案
+      </button>
+    </view>
+
+    <!-- 分隔线 -->
+    <view class="divider"></view>
+  </view>
+</scroll-view>
+
+<!-- 错题本界面 -->
+<scroll-view class="quiz-container wrong-questions" scroll-y wx:if="{{ activeTab === 'wrong' }}">
+  <view wx:if="{{ wrongList.length === 0 }}" class="empty-state">
+    <view class="empty-icon">📚</view>
+    <text>暂无错题</text>
+  </view>
+  <view class="quiz-question" wx:for="{{ wrongList }}" wx:key="index">
+    <view class="question-header">
+      <view class="question-number">错题 {{ index + 1 }}</view>
+      <view class="question-type">{{ item.type }}</view>
+    </view>
+
+    <view class="question-text">{{ item.question }}</view>
+
+    <view class="options-list">
+      <view
+        wx:for="{{ item.options }}"
+        wx:for-item="option"
+        wx:for-index="optionIndex"
+        wx:key="optionIndex"
+        class="option-item {{ optionIndex === item.userAnswer ? 'user-answer' : '' }} {{ optionIndex === item.correctAnswer ? 'correct-answer-highlight' : '' }}"
+      >
+        <view class="option-label"></view>
+        <text>{{ option }}</text>
+      </view>
+    </view>
+
+    <view class="answer-section">
+      <view class="answer-result incorrect">
+        <view class="answer-text">
+          <text>✕ 答错了，正确答案是 {{ String.fromCharCode(65 + item.correctAnswer) }}</text>
+        </view>
+      </view>
+
+      <view class="expand-section">
+        <view
+          class="expand-button"
+          bind:tap="toggleWrongAnalysis"
+          data-question-index="{{ index }}"
+        >
+          <text>{{ item.showAnalysis ? '收起解析' : '展开解析' }}</text>
+          <text class="expand-icon">{{ item.showAnalysis ? '▲' : '▼' }}</text>
+        </view>
+
+        <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
+          <view class="analysis-title">解析</view>
+          <text class="analysis-text">{{ item.analysis }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="divider"></view>
+  </view>
+</scroll-view>
+
+<view class="generate-button" bind:tap="generateQuiz">
+  <view class="button-plus"></view>
+</view>

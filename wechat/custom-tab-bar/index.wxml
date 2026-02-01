@@ -1,0 +1,5 @@
+<t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="handleChange">
+  <t-tab-bar-item icon="/static/icon/chat.svg" value="session">对话</t-tab-bar-item>
+  <t-tab-bar-item icon="/static/icon/quiz.svg" value="quiz">习题</t-tab-bar-item>
+  <t-tab-bar-item icon="/static/icon/my.svg" value="my">我的</t-tab-bar-item>
+</t-tab-bar>

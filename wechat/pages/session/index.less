@@ -1,0 +1,134 @@
+/* pages/session/index.wxss */
+page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100vh;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 112rpx);
+}
+
+.message-list {
+  height: 0;
+  flex-grow: 1;
+}
+
+.session-item {
+  display: flex;
+  flex-direction: column;
+  margin: 16rpx 20rpx;
+  padding: 20rpx;
+  background: #fbfbfb;
+  border-radius: 12rpx;
+  border: 3rpx solid #ff7a45;
+
+  &:active {
+    background: #f9f9f9;
+    opacity: 0.8;
+  }
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.session-indicator {
+  width: 6rpx;
+  height: 50rpx;
+  background: #ea9134;
+  border-radius: 3rpx;
+  margin-right: 16rpx;
+  opacity: 0.6;
+}
+
+.session-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333333;
+}
+
+.session-preview {
+  font-size: 24rpx;
+  color: #00000066;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-time {
+  font-size: 22rpx;
+  color: #00000066;
+  white-space: nowrap;
+  margin-left: 16rpx;
+}
+
+.add-session-button {
+  position: fixed;
+  bottom: 240rpx;
+  right: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  background: #ff7a45;
+  border-radius: 50%;
+  box-shadow: 0 4rpx 12rpx rgba(255, 122, 69, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+
+  &:active {
+    background: #ff6b2f;
+    box-shadow: 0 6rpx 16rpx rgba(255, 122, 69, 0.4);
+    transform: scale(0.95);
+  }
+}
+
+.button-icon {
+  font-size: 56rpx;
+  color: #ffffff;
+  font-weight: bold;
+  line-height: 1;
+  position: relative;
+  top: 2rpx;
+}
+
+.button-plus {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 7rpx;
+    height: 36rpx;
+    background: #ffffff;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36rpx;
+    height: 7rpx;
+    background: #ffffff;
+  }
+}
+
+.add-session-button text {
+  display: none;
+}

@@ -1,0 +1,26 @@
+<nav title-text="全部消息"></nav>
+<scroll-view
+  class="message-list"
+  scroll-y
+  refresher-enabled
+  refresher-triggered="{{ loading }}"
+  bindrefresherrefresh="getMessageList"
+>
+  <view
+    wx:for="{{ messageList }}"
+    wx:key="index"
+    class="session-item"
+    bind:tap="toChat"
+    data-user-id="{{ item.userId }}"
+  >
+    <view class="session-header">
+      <view class="session-title">{{ item.name }}</view>
+      <view class="session-time">{{ item.messages[item.messages.length - 1].formattedTime }}</view>
+    </view>
+    <view class="session-preview">{{ item.messages[item.messages.length - 1].content }}</view>
+  </view>
+</scroll-view>
+
+<view class="add-session-button" bind:tap="addSession">
+  <view class="button-plus"></view>
+</view>

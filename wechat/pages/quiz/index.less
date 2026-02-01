@@ -1,0 +1,484 @@
+@import '/variable.less';
+
+// 绿色主题色板
+@primary-green: #3aa655;
+@dark-green: #2d8659;
+@light-green: #f0f9f5;
+@button-green: #52c41a;
+@border-green: #b3d9b3;
+@correct-green: #52c41a;
+@incorrect-red: #ff4444;
+
+.quiz-tabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0;
+  background: #ffffff;
+  border-bottom: 2rpx solid #e0e0e0;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 16rpx 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #666666;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+
+  &.active {
+    color: @primary-green;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2rpx;
+      left: 0;
+      right: 0;
+      height: 4rpx;
+      background: @primary-green;
+    }
+  }
+
+  &:active:not(.active) {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.quiz-container {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 112rpx - 60px - 88rpx);
+  background: @light-green;
+  padding: 20rpx 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 112rpx - 60px - 88rpx);
+  color: #999999;
+
+  .empty-icon {
+    font-size: 80rpx;
+    margin-bottom: 20rpx;
+  }
+
+  text {
+    font-size: 26rpx;
+  }
+}
+
+.quiz-question {
+  margin: 16rpx 20rpx;
+  padding: 24rpx;
+  background: #ffffff;
+  border-radius: 12rpx;
+  border-left: 5rpx solid @primary-green;
+  box-shadow: 0 2rpx 8rpx rgba(58, 166, 85, 0.08);
+}
+
+.question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.question-number {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: @dark-green;
+}
+
+.question-type {
+  font-size: 22rpx;
+  color: #ffffff;
+  background: @primary-green;
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+}
+
+.question-text {
+  font-size: 26rpx;
+  color: #333333;
+  margin-bottom: 24rpx;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 14rpx 16rpx;
+  border: 2rpx solid @border-green;
+  border-radius: 8rpx;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.selected {
+    border-color: @primary-green;
+    background: rgba(58, 166, 85, 0.06);
+
+    .option-label {
+      border-color: @primary-green;
+
+      &::after {
+        background: @primary-green;
+      }
+    }
+
+    &.correct {
+      border-color: @correct-green;
+      background: rgba(82, 196, 26, 0.08);
+
+      .option-label {
+        border-color: @correct-green;
+
+        &::after {
+          background: @correct-green;
+        }
+      }
+    }
+
+    &.incorrect {
+      border-color: @incorrect-red;
+      background: rgba(255, 68, 68, 0.08);
+
+      .option-label {
+        border-color: @incorrect-red;
+
+        &::after {
+          background: @incorrect-red;
+        }
+      }
+    }
+  }
+
+  // 错题本中的样式
+  &.user-answer {
+    border-color: @incorrect-red;
+    background: rgba(255, 68, 68, 0.08);
+
+    .option-label {
+      border-color: @incorrect-red;
+
+      &::after {
+        background: @incorrect-red;
+      }
+    }
+  }
+
+  &.correct-answer-highlight {
+    border-color: @correct-green;
+    background: rgba(82, 196, 26, 0.08);
+
+    .option-label {
+      border-color: @correct-green;
+
+      &::after {
+        background: @correct-green;
+      }
+    }
+  }
+
+  &:active:not([data-disabled="true"]) {
+    background: rgba(58, 166, 85, 0.04);
+  }
+
+  &[data-disabled="true"] {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24rpx;
+  width: 24rpx;
+  height: 24rpx;
+  background: transparent;
+  border: 2rpx solid #d4d4d4;
+  border-radius: 50%;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 22rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.3s ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 14rpx;
+    height: 14rpx;
+    background: transparent;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+  }
+
+  .option-item.selected & {
+    border-color: @primary-green;
+
+    &::after {
+      background: @primary-green;
+    }
+  }
+}
+
+.option-item text {
+  font-size: 24rpx;
+  color: #333333;
+  flex: 1;
+  line-height: 1.5;
+}
+
+.answer-section {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid @border-green;
+}
+
+.answer-result {
+  padding: 16rpx;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+
+  &.correct {
+    background: rgba(82, 196, 26, 0.1);
+    border-left: 4rpx solid @correct-green;
+
+    text {
+      color: @correct-green;
+      font-weight: bold;
+      font-size: 24rpx;
+
+      &:first-child {
+        font-size: 26rpx;
+      }
+    }
+  }
+
+  &.incorrect {
+    background: rgba(255, 68, 68, 0.1);
+    border-left: 4rpx solid @incorrect-red;
+
+    text {
+      color: @incorrect-red;
+      font-weight: bold;
+      font-size: 24rpx;
+
+      &:first-child {
+        font-size: 26rpx;
+      }
+    }
+  }
+}
+
+.answer-text {
+  display: flex;
+  align-items: center;
+  gap: 0;
+
+  text {
+    display: inline;
+    font-size: 24rpx;
+    font-weight: bold;
+    color: inherit;
+  }
+}
+
+.expand-section {
+  margin-top: 12rpx;
+}
+
+.expand-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 16rpx;
+  background: rgba(58, 166, 85, 0.06);
+  border-radius: 8rpx;
+  border: 1rpx solid @border-green;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  text {
+    font-size: 24rpx;
+    color: @primary-green;
+    font-weight: 500;
+
+    &:first-child {
+      flex: 1;
+    }
+  }
+
+  .expand-icon {
+    margin-left: 8rpx;
+    font-weight: bold;
+  }
+
+  &:active {
+    background: rgba(58, 166, 85, 0.1);
+  }
+}
+
+.analysis-panel {
+  margin-top: 12rpx;
+  padding: 16rpx;
+  background: rgba(58, 166, 85, 0.04);
+  border-radius: 8rpx;
+  border-left: 4rpx solid @primary-green;
+  animation: slideDown 0.3s ease;
+}
+
+.analysis-title {
+  font-size: 24rpx;
+  color: @dark-green;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+}
+
+.analysis-text {
+  font-size: 23rpx;
+  color: #333333;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.button-group {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.submit-btn {
+  flex: 1;
+  padding: 14rpx 20rpx;
+  background: @button-green;
+  color: #ffffff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:active:not(:disabled) {
+    background: @dark-green;
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    background: @border-green;
+    color: #999999;
+    cursor: not-allowed;
+  }
+}
+
+.divider {
+  height: 0;
+  margin: 20rpx -24rpx -24rpx -24rpx;
+  border-bottom: 1rpx solid @border-green;
+}
+
+.quiz-question:last-child .divider {
+  display: none;
+}
+
+.generate-button {
+  position: fixed;
+  bottom: 240rpx;
+  right: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  background: @button-green;
+  border-radius: 50%;
+  box-shadow: 0 4rpx 12rpx rgba(82, 196, 26, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+
+  &:active {
+    background: @dark-green;
+    box-shadow: 0 6rpx 16rpx rgba(82, 196, 26, 0.4);
+    transform: scale(0.95);
+  }
+}
+
+.button-icon {
+  font-size: 56rpx;
+  color: #ffffff;
+  font-weight: bold;
+  line-height: 1;
+  position: relative;
+  top: 2rpx;
+}
+
+.button-plus {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 7rpx;
+    height: 36rpx;
+    background: #ffffff;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36rpx;
+    height: 7rpx;
+    background: #ffffff;
+  }
+}
+
+.generate-button text {
+  display: none;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
