@@ -867,7 +867,7 @@ async function switchSession(sessionId){
   await loadSessions();
   await loadHistory();
   await loadQuiz();
-  // 如果会话弹窗打开，关闭它
+  // 关闭会话弹窗（如果打开）
   closeSessionsModal();
 }
 
@@ -879,6 +879,8 @@ async function createNewSession(){
     await loadSessions();
     await loadHistory();
     await loadQuiz();
+    // 关闭会话弹窗（如果打开）
+    closeSessionsModal();
   }catch(e){
     alert("创建会话失败: " + e.message);
   }
@@ -1285,6 +1287,10 @@ async function loginOrRegister(kind){
     await loadSessions();
     await loadHistory();
     await loadQuiz();
+    
+    // 确保所有弹窗都关闭，让用户看到主对话界面
+    closeSessionsModal();
+    closeQuizModal();
   }catch(e){
     document.getElementById("authErr").innerText = e.message;
   }
@@ -1543,6 +1549,10 @@ document.getElementById("btnLogout").onclick = ()=>{
       
       await loadHistory();
       await loadQuiz();
+      
+      // 确保所有弹窗都关闭，让用户看到主对话界面
+      closeSessionsModal();
+      closeQuizModal();
     }catch(e){
       showAuth(true);
     }
