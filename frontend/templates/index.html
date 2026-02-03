@@ -238,6 +238,13 @@
       </div>
     </header>
 
+    <!-- 移动端标签导航 -->
+    <div class="md:hidden mobile-tabs mb-3">
+      <button class="mobile-tab-btn active" data-tab="chat">对话</button>
+      <button class="mobile-tab-btn" data-tab="sessions">会话</button>
+      <button class="mobile-tab-btn" data-tab="quiz">练习题</button>
+    </div>
+
     <main class="flex-1 layout-container min-h-0">
       <!-- 左：会话列表 -->
       <section class="chatbox layout-section p-4" data-section="sessions">
@@ -348,6 +355,44 @@
   </div>
 
 <script>
+// 移动端标签页管理
+class MobileTabManager {
+  constructor() {
+    this.activeTab = 'chat';
+    this.init();
+  }
+
+  init() {
+    const buttons = document.querySelectorAll('.mobile-tab-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+    });
+    this.switchTab('chat');
+  }
+
+  switchTab(tabName) {
+    // 更新按钮状态
+    document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    // 更新面板显示
+    document.querySelectorAll('.layout-section').forEach(section => {
+      section.classList.toggle('active', section.dataset.section === tabName);
+    });
+
+    this.activeTab = tabName;
+    localStorage.setItem('mobileTab', tabName);
+  }
+
+  restoreTab() {
+    const saved = localStorage.getItem('mobileTab') || 'chat';
+    this.switchTab(saved);
+  }
+}
+
+let MOBILE_TABS = null;
+
 let TOKEN = localStorage.getItem("token") || "";
 let USER = JSON.parse(localStorage.getItem("user") || "null");
 let SESSION_ID = localStorage.getItem("session_id") || "";
@@ -1310,6 +1355,10 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
+  // 初始化移动端标签页
+  MOBILE_TABS = new MobileTabManager();
+  MOBILE_TABS.restoreTab();
+
   // 初始化响应式布局
   layoutManager = new LayoutManager();
   

@@ -261,25 +261,63 @@ body{
     font-size: 14px !important;
   }
 
-  /* 布局容器：移动端垂直堆叠 */
+  /* 布局容器：移动端选项卡式 */
   .layout-container {
     flex-direction: column !important;
-    gap: 4px !important;
+    gap: 0 !important;
+  }
+
+  /* 移动端选项卡导航 */
+  .mobile-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 8px;
+    overflow-x: auto;
+  }
+
+  .mobile-tabs button {
+    flex: 1;
+    padding: 10px 12px;
+    background: #f3f4f6;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 60px;
+  }
+
+  .mobile-tabs button.active {
+    background: #fff7ed;
+    color: #f97316;
+    border-bottom-color: #f97316;
+  }
+
+  .mobile-tabs button:hover {
+    background: #ffffff;
   }
 
   .layout-section {
     min-width: auto !important;
     flex-basis: auto !important;
+    display: none;
   }
 
-  [data-section="sessions"],
-  [data-section="quiz"] {
-    display: none !important;
+  .layout-section.active {
+    display: flex !important;
+    flex: 1 !important;
+    min-height: 0 !important;
   }
 
+  /* 手机端默认显示对话区 */
   [data-section="chat"] {
+    display: flex !important;
     flex: 1 !important;
     min-width: auto !important;
+    min-height: 0 !important;
   }
 
   .resize-handle {
@@ -467,10 +505,16 @@ body{
   }
 }
 
-/* 平板设备（768px - 1024px）优化 */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .layout-container {
-    gap: 8px !important;
+/* 桌面端样式（> 768px） */
+@media (min-width: 769px) {
+  /* 隐藏移动端标签 */
+  .mobile-tabs {
+    display: none !important;
+  }
+
+  /* 所有面板都显示 */
+  .layout-section {
+    display: flex !important;
   }
 
   [data-section="sessions"] {
