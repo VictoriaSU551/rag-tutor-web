@@ -65,6 +65,7 @@
       .layout-container {
         flex-direction: column;
         gap: 0.25rem;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
       }
       
       .layout-section {
@@ -211,7 +212,7 @@
     }
   </style>
 </head>
-<body class="h-screen overflow-hidden bg-white">
+  <body class="h-[100dvh] min-h-[100dvh] overflow-hidden bg-white">
   <!-- 移动端安全距离 -->
   <style>
     @supports (padding: max(0px)) {
@@ -230,7 +231,7 @@
         <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
       <div class="md:hidden text-center flex-1">
-        <div class="text-lg font-semibold">智能学习助手</div>
+        <div class="text-lg font-semibold">道道的智能学习助手</div>
       </div>
       <div class="flex items-center gap-1 md:gap-3">
         <button onclick="showKnowledgeBaseModal()" class="px-2 md:px-4 py-1 md:py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-xs md:text-sm whitespace-nowrap">知识库</button>
@@ -428,6 +429,23 @@ function showQuizModal() {
   modalBox.querySelector('#quizBox').removeAttribute('id');
   // 同步难度选择
   document.getElementById('quizDifficultyModal').value = document.getElementById('quizDifficulty').value;
+
+  // 绑定弹窗内的按钮事件（克隆节点不会保留事件）
+  modalBox.onclick = (e) => {
+    const btn = e.target.closest('button[data-quiz-action]');
+    if(!btn) return;
+    const action = btn.dataset.quizAction;
+    const index = Number(btn.dataset.quizIndex);
+    if(Number.isNaN(index)) return;
+    if(action === 'submit') {
+      submitQuizAnswer(index, modalBox);
+    } else if(action === 'add-wrong') {
+      addToWrongbook(index);
+    }
+  };
+
+  // 为弹窗内已存在的解析按钮重新绑定事件
+  bindExplainToggles(modalBox);
 }
 
 function closeQuizModal() {
@@ -1020,11 +1038,15 @@ async function loadQuiz(){
       submitBtn.className = "flex-1 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm hover:bg-orange-600";
       submitBtn.innerText = "提交";
       submitBtn.onclick = () => submitQuizAnswer(index);
+      submitBtn.dataset.quizAction = "submit";
+      submitBtn.dataset.quizIndex = index;
       
       const addWrongBtn = document.createElement("button");
       addWrongBtn.className = "px-3 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600";
       addWrongBtn.innerText = "添加到错题本";
       addWrongBtn.onclick = () => addToWrongbook(index);
+      addWrongBtn.dataset.quizAction = "add-wrong";
+      addWrongBtn.dataset.quizIndex = index;
       
       const resultDiv = document.createElement("div");
       resultDiv.id = `quiz-result-${index}`;
@@ -1043,19 +1065,19 @@ async function loadQuiz(){
         
         // 延迟一帧后重新绑定事件，确保 DOM 已更新
         requestAnimationFrame(() => {
-          const toggleBtn = resultDiv.querySelector('button');
+          const toggleBtn = resultDiv.querySelector('[data-explain-toggle]');
           const explainContent = resultDiv.querySelector('.border-l-2');
           
           if(toggleBtn && explainContent){
             // 为按钮创建新的事件监听器（不使用 onclick 属性）
             toggleBtn.replaceWith(toggleBtn.cloneNode(true));
-            const newToggleBtn = resultDiv.querySelector('button');
+            const newToggleBtn = resultDiv.querySelector('[data-explain-toggle]');
             
             if(newToggleBtn){
               newToggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const content = resultDiv.querySelector('.border-l-2');
-                const btn = resultDiv.querySelector('button');
+                const btn = resultDiv.querySelector('[data-explain-toggle]');
                 if(!content || !btn) return;
                 
                 const isHidden = content.classList.contains("hidden");
@@ -1086,8 +1108,31 @@ async function loadQuiz(){
   }
 }
 
-async function submitQuizAnswer(quizIndex){
-  const selected = document.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
+function bindExplainToggles(scope){
+  const container = scope || document;
+  container.querySelectorAll('[data-explain-toggle]').forEach(btn => {
+    if(btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const resultRoot = btn.closest('[id^="quiz-result-"]') || btn.parentElement;
+      const content = resultRoot ? resultRoot.querySelector('.border-l-2') : null;
+      if(!content) return;
+      const isHidden = content.classList.contains("hidden");
+      if(isHidden){
+        content.classList.remove("hidden");
+        btn.innerText = "📖 收起解析";
+      }else{
+        content.classList.add("hidden");
+        btn.innerText = "📖 展开解析";
+      }
+    });
+  });
+}
+
+async function submitQuizAnswer(quizIndex, scope){
+  const root = scope || document;
+  const selected = root.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
   if(!selected){
     alert("请选择答案");
     return;
@@ -1101,7 +1146,8 @@ async function submitQuizAnswer(quizIndex){
     return;
   }
   
-  const resultDiv = document.getElementById(`quiz-result-${quizIndex}`);
+  const resultDiv = root.querySelector(`#quiz-result-${quizIndex}`);
+  if(!resultDiv) return;
   const isCorrect = userAnswer === exercise.correct_answer;
   
   // 创建结果容器
@@ -1125,6 +1171,7 @@ async function submitQuizAnswer(quizIndex){
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "w-full text-left p-2 rounded bg-blue-50 hover:bg-blue-100 text-sm font-medium text-blue-700 transition-colors";
   toggleBtn.innerText = "📖 展开解析";
+  toggleBtn.dataset.explainToggle = "1";
   
   const explainContent = document.createElement("div");
   explainContent.className = "hidden mt-2 p-2 rounded bg-blue-50 text-sm border-l-2 border-blue-300";
