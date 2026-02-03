@@ -73,14 +73,27 @@
         flex-basis: auto !important;
       }
       
-      [data-section="sessions"],
-      [data-section="quiz"] {
+      /* 手机端强制隐藏会话列表和练习题面板 */
+      section[data-section="sessions"],
+      section.layout-section[data-section="sessions"],
+      .chatbox[data-section="sessions"] {
         display: none !important;
       }
       
-      [data-section="chat"] {
+      section[data-section="quiz"],
+      section.layout-section[data-section="quiz"],
+      .chatbox[data-section="quiz"] {
+        display: none !important;
+      }
+      
+      /* 手机端对话面板占满全部空间 */
+      section[data-section="chat"],
+      section.layout-section[data-section="chat"],
+      .chatbox[data-section="chat"] {
         flex: 1 !important;
         min-width: auto !important;
+        width: 100% !important;
+        display: flex !important;
       }
       
       .resize-handle {
@@ -439,8 +452,11 @@ function showSessionsModal() {
 }
 
 function closeSessionsModal() {
-  document.getElementById('sessionsModal').classList.add('hidden');
-  document.getElementById('sessionsModal').classList.remove('flex');
+  const modal = document.getElementById('sessionsModal');
+  if(modal){
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
 }
 
 function showQuizModal() {
@@ -475,8 +491,11 @@ function showQuizModal() {
 }
 
 function closeQuizModal() {
-  document.getElementById('quizModal').classList.add('hidden');
-  document.getElementById('quizModal').classList.remove('flex');
+  const modal = document.getElementById('quizModal');
+  if(modal){
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
 }
 
 let MOBILE_TABS = null;
@@ -1525,6 +1544,10 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
+  // 立即关闭所有弹窗，确保手机端显示主对话界面
+  closeSessionsModal();
+  closeQuizModal();
+  
   // 初始化响应式布局
   layoutManager = new LayoutManager();
   
@@ -1760,6 +1783,10 @@ function hideKnowledgeBaseModal() {
 
 // 点击modal背景关闭modal
 document.addEventListener('DOMContentLoaded', function() {
+  // 确保所有弹窗在页面加载时关闭
+  closeSessionsModal();
+  closeQuizModal();
+  
   const modal = document.getElementById('knowledgeBaseModal');
   if (modal) {
     modal.addEventListener('click', function(e) {
