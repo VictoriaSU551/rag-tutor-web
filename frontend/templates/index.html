@@ -223,17 +223,20 @@
     }
   </style>
   <div class="h-full flex flex-col px-3 md:px-4 py-2 md:py-3">
-    <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-4 mb-2 md:mb-3">
-      <div class="order-1 md:order-none">
-        <div class="text-lg md:text-2xl font-semibold">道道的智能学习助手</div>
-        <div class="hidden md:block text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
+    <header class="flex items-center justify-between gap-2 md:gap-4 mb-2 md:mb-3">
+      <div class="hidden md:block flex-1">
+        <div class="text-2xl font-semibold">道道的智能学习助手</div>
+        <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
-      <div class="flex items-center gap-2 md:gap-3 w-full md:w-auto order-2 md:order-none">
-        <button onclick="showKnowledgeBaseModal()" class="px-2 md:px-4 py-1.5 md:py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-xs md:text-sm whitespace-nowrap">知识库管理</button>
+      <div class="md:hidden text-center flex-1">
+        <div class="text-lg font-semibold">智能学习助手</div>
+      </div>
+      <div class="flex items-center gap-1 md:gap-3">
+        <button onclick="showKnowledgeBaseModal()" class="px-2 md:px-4 py-1 md:py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-xs md:text-sm whitespace-nowrap">知识库</button>
         <img id="avatar" class="w-8 md:w-10 h-8 md:h-10 rounded-full border" src="/static/img/default_avatar.svg" />
-        <div class="hidden md:block text-sm">
+        <div class="flex flex-col text-xs md:text-sm">
           <div id="username" class="font-medium">未登录</div>
-          <button id="btnLogout" class="text-orange-600 hidden">退出</button>
+          <button id="btnLogout" class="text-orange-600 hidden text-xs">退出</button>
         </div>
       </div>
     </header>
@@ -269,7 +272,7 @@
         <div class="section-content">
           <div id="chatArea" class="space-y-3 overflow-auto grow pr-2"></div>
           <div id="sources" class="mt-2 text-xs text-gray-500 border-t pt-2"></div>
-          <div class="mt-3 flex gap-2 items-end">
+          <div class="mt-3 flex gap-2 items-end pb-safe md:pb-2">
             <textarea id="q" class="flex-1 border rounded-lg md:rounded-xl p-2 md:p-3 text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-inset resize-none overflow-hidden"
               placeholder="提问..." rows="1" style="line-height: 1.5; min-height: 40px; max-height: 200px;"></textarea>
             <button id="btnAsk" class="px-3 md:px-5 py-2 md:py-3 rounded-lg md:rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors flex items-center justify-center flex-shrink-0" style="height: 40px; width: 44px; min-width: 44px;">
@@ -359,26 +362,40 @@
 class MobileTabManager {
   constructor() {
     this.activeTab = 'chat';
-    this.init();
   }
 
   init() {
     const buttons = document.querySelectorAll('.mobile-tab-btn');
     buttons.forEach(btn => {
-      btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const tabName = btn.dataset.tab;
+        if (tabName) {
+          this.switchTab(tabName);
+        }
+      });
     });
-    this.switchTab('chat');
+    this.restoreTab();
   }
 
   switchTab(tabName) {
     // 更新按钮状态
     document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === tabName);
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
     });
 
     // 更新面板显示
     document.querySelectorAll('.layout-section').forEach(section => {
-      section.classList.toggle('active', section.dataset.section === tabName);
+      if (section.dataset.section === tabName) {
+        section.classList.add('active');
+      } else {
+        section.classList.remove('active');
+      }
     });
 
     this.activeTab = tabName;
@@ -1355,9 +1372,16 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
-  // 初始化移动端标签页
-  MOBILE_TABS = new MobileTabManager();
-  MOBILE_TABS.restoreTab();
+  // 初始化移动端标签页（需要确保DOM已加载）
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      MOBILE_TABS = new MobileTabManager();
+      MOBILE_TABS.init();
+    });
+  } else {
+    MOBILE_TABS = new MobileTabManager();
+    MOBILE_TABS.init();
+  }
 
   // 初始化响应式布局
   layoutManager = new LayoutManager();

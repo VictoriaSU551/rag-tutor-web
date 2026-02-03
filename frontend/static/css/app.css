@@ -16,8 +16,11 @@ body{
     padding-left: max(0px, env(safe-area-inset-left));
     padding-right: max(0px, env(safe-area-inset-right));
     padding-top: max(0px, env(safe-area-inset-top));
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
+}
+/* 安全区域类 */
+.pb-safe {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 /* 移动设备优化 */
 @media (max-width: 768px) {
@@ -270,7 +273,7 @@ body{
   /* 移动端选项卡导航 */
   .mobile-tabs {
     display: flex;
-    gap: 4px;
+    gap: 0;
     border-bottom: 2px solid #e5e7eb;
     margin-bottom: 8px;
     overflow-x: auto;
@@ -278,22 +281,29 @@ body{
 
   .mobile-tabs button {
     flex: 1;
-    padding: 10px 12px;
+    padding: 12px 8px;
     background: #f3f4f6;
     border: none;
     border-bottom: 3px solid transparent;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
     white-space: nowrap;
-    min-width: 60px;
+    min-width: 70px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .mobile-tabs button.active {
     background: #fff7ed;
     color: #f97316;
     border-bottom-color: #f97316;
+  }
+
+  .mobile-tabs button:active {
+    opacity: 0.8;
   }
 
   .mobile-tabs button:hover {
