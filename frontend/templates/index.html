@@ -348,7 +348,7 @@
         <!-- 右边：错题详情 -->
         <div class="sm:flex-[2] bg-white rounded-lg p-3 sm:p-4 overflow-auto border sm:border-0">
           <div class="font-medium mb-3 text-sm sm:text-base">错题详情</div>
-          <div id="wrongDetail" class="text-xs sm:text-sm text-gray-500">请选择左侧的错题查看详情</div>
+          <div id="wrongDetail" class="text-xs sm:text-sm text-gray-500">点击错题题目查看详情</div>
         </div>
       </div>
     </div>
@@ -410,6 +410,32 @@ function showSessionsModal() {
   modalList.appendChild(sessionList);
   // 移除ID避免冲突
   modalList.querySelector('#sessionList').removeAttribute('id');
+
+  // 绑定弹窗内会话点击与删除事件（克隆节点无事件）
+  modalList.onclick = async (e) => {
+    const deleteBtn = e.target.closest('.btn-delete');
+    if(deleteBtn){
+      e.stopPropagation();
+      const sessionId = deleteBtn.dataset.sessionId;
+      if(!sessionId) return;
+      const session = SESSIONS.find(s => String(s.id) === String(sessionId));
+      const title = session?.title || '无标题';
+      if(confirm(`确定删除会话 "${title}" 吗？`)){
+        await deleteSession(sessionId);
+        // 删除后刷新弹窗列表
+        showSessionsModal();
+      }
+      return;
+    }
+
+    const item = e.target.closest('.session-item');
+    if(item){
+      const sessionId = item.dataset.sessionId;
+      if(sessionId){
+        await switchSession(sessionId);
+      }
+    }
+  };
 }
 
 function closeSessionsModal() {
@@ -761,6 +787,7 @@ async function loadSessions(){
     SESSIONS.forEach(s => {
       const itemWrapper = document.createElement("div");
       itemWrapper.className = "relative group";
+      itemWrapper.dataset.sessionId = s.id;
       
       const item = document.createElement("div");
       item.className = `p-3 rounded-lg cursor-pointer border transition-all ${
@@ -768,6 +795,8 @@ async function loadSessions(){
           ? "bg-orange-100 border-orange-400 font-medium" 
           : "bg-white border-gray-200 hover:border-orange-300"
       }`;
+      item.classList.add("session-item");
+      item.dataset.sessionId = s.id;
       
       const titleDiv = document.createElement("div");
       titleDiv.className = "text-sm truncate";
@@ -787,8 +816,9 @@ async function loadSessions(){
       };
       
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "btn-delete absolute top-1 right-2 hidden group-hover:block text-gray-400 hover:text-red-500 text-lg";
+      deleteBtn.className = "btn-delete absolute top-1 right-2 text-gray-400 hover:text-red-500 text-lg md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto";
       deleteBtn.innerText = "✕";
+      deleteBtn.dataset.sessionId = s.id;
       deleteBtn.onclick = async (e) => {
         e.stopPropagation();
         if(confirm(`确定删除会话 "${s.title || '无标题'}" 吗？`)){
@@ -811,7 +841,17 @@ async function deleteSession(sessionId){
     if(SESSION_ID === sessionId){
       SESSION_ID = "";
       localStorage.removeItem("session_id");
-      await createNewSession();
+      await loadSessions();
+      if(SESSIONS.length > 0){
+        await switchSession(SESSIONS[0].id);
+      }else{
+        document.getElementById("chatArea").innerHTML = "";
+        document.getElementById("sources").innerHTML = "";
+        const quizBox = document.getElementById("quizBox");
+        if(quizBox){
+          quizBox.innerHTML = '<div class="text-center text-gray-400">暂无练习题（先提问生成）</div>';
+        }
+      }
     }else{
       await loadSessions();
     }
