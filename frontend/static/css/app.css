@@ -275,11 +275,14 @@ body{
 
   /* 移动端选项卡导航 */
   .mobile-tabs {
-    display: flex;
+    display: flex !important;
     gap: 0;
     border-bottom: 2px solid #e5e7eb;
     margin-bottom: 8px;
     overflow-x: auto;
+    position: relative;
+    z-index: 10;
+    background: #fff;
   }
 
   .mobile-tabs button {
@@ -297,6 +300,10 @@ body{
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
+    z-index: 11;
+    pointer-events: auto !important;
+    touch-action: manipulation;
   }
 
   .mobile-tabs button.active {

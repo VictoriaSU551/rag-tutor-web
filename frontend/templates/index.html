@@ -243,10 +243,10 @@
     </header>
 
     <!-- 移动端标签导航 -->
-    <div class="md:hidden mobile-tabs mb-3">
-      <button class="mobile-tab-btn active" data-tab="chat">对话</button>
-      <button class="mobile-tab-btn" data-tab="sessions">会话</button>
-      <button class="mobile-tab-btn" data-tab="quiz">练习题</button>
+    <div class="mobile-tabs">
+      <button class="mobile-tab-btn active" data-tab="chat" type="button">对话</button>
+      <button class="mobile-tab-btn" data-tab="sessions" type="button">会话</button>
+      <button class="mobile-tab-btn" data-tab="quiz" type="button">练习题</button>
     </div>
 
     <main class="flex-1 layout-container min-h-0">
@@ -363,23 +363,43 @@
 class MobileTabManager {
   constructor() {
     this.activeTab = 'chat';
+    console.log('[MobileTab] 构造函数执行');
   }
 
   init() {
+    console.log('[MobileTab] init开始');
     const buttons = document.querySelectorAll('.mobile-tab-btn');
+    console.log('[MobileTab] 找到按钮数:', buttons.length);
     
-    buttons.forEach(btn => {
+    if (buttons.length === 0) {
+      console.error('[MobileTab] 未找到标签按钮！');
+      return;
+    }
+    
+    buttons.forEach((btn, index) => {
       const tabName = btn.getAttribute('data-tab');
+      console.log(`[MobileTab] 按钮${index}: ${tabName}`);
+      
       btn.addEventListener('click', () => {
+        console.log(`[MobileTab] 点击: ${tabName}`);
+        this.switchTab(tabName);
+      }, false);
+      
+      // 添加触摸事件支持
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        console.log(`[MobileTab] 触摸: ${tabName}`);
         this.switchTab(tabName);
       }, false);
     });
     
     // 初始化显示chat标签
     this.switchTab('chat');
+    console.log('[MobileTab] init完成');
   }
 
   switchTab(tabName) {
+    console.log(`[MobileTab] 切换到: ${tabName}`);
     if (!tabName) return;
     
     // 更新按钮状态
@@ -394,9 +414,12 @@ class MobileTabManager {
 
     // 更新面板显示
     const sections = document.querySelectorAll('.layout-section');
+    console.log(`[MobileTab] 找到面板数: ${sections.length}`);
     sections.forEach(section => {
-      if (section.getAttribute('data-section') === tabName) {
+      const sectionName = section.getAttribute('data-section');
+      if (sectionName === tabName) {
         section.classList.add('active');
+        console.log(`[MobileTab] 激活面板: ${sectionName}`);
       } else {
         section.classList.remove('active');
       }
@@ -1371,8 +1394,11 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
-  // 初始化响应式布局（仅在非移动端初始化）
+  // 检测是否为移动端
   const isMobile = window.innerWidth <= 768;
+  console.log('[Init] 窗口宽度:', window.innerWidth, '是否移动端:', isMobile);
+  
+  // 初始化响应式布局（仅在非移动端初始化）
   if (!isMobile) {
     layoutManager = new LayoutManager();
   }
@@ -1405,13 +1431,13 @@ document.getElementById("btnLogout").onclick = ()=>{
     showAuth(true);
   }
   
-  // 最后初始化移动端标签页（确保DOM已完全加载）
-  if (isMobile) {
-    setTimeout(() => {
-      MOBILE_TABS = new MobileTabManager();
-      MOBILE_TABS.init();
-    }, 300);
-  }
+  // 移动端标签页初始化
+  console.log('[Init] 准备初始化移动端标签页...');
+  setTimeout(() => {
+    console.log('[Init] setTimeout执行，创建MobileTabManager');
+    MOBILE_TABS = new MobileTabManager();
+    MOBILE_TABS.init();
+  }, 300);
 })();
 
 // ==================== 错题本管理 ====================
