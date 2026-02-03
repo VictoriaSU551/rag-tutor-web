@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RAG Tutor — 索引进度测试</title>
+  <style>
+    body { font-family: "Segoe UI", system-ui; padding: 2rem; max-width: 600px; margin: 0 auto; }
+    .progress-container { margin: 1.5rem 0; }
+    progress { width: 100%; height: 8px; }
+    .step-text { margin: 0.5rem 0; font-size: 1.1em; font-weight: 500; color: #333; }
+    .status { padding: 0.5rem; border-radius: 4px; margin-top: 1rem; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>📄 RAG Tutor 索引进度测试</h1>
+  
+  <div>
+    <label>Token（请替换为你的有效 token）：<br/>
+      <input id="tokenInput" type="text" value="YOUR_TOKEN_HERE" style="width:100%; padding:0.5rem;"/>
+    </label>
+  </div>
+
+  <button id="startBtn" style="margin-top:1rem; padding:0.5rem 1rem;">🚀 开始轮询进度</button>
+  <button id="stopBtn" style="margin-top:1rem; padding:0.5rem 1rem; display:none;">⏹️ 停止轮询</button>
+
+  <div class="progress-container">
+    <p>当前进度：<span id="percent">0</span>%</p>
+    <progress id="progressBar" value="0" max="100"></progress>
+    <p class="step-text" id="stepText">未开始</p>
+  </div>
+
+  <div id="status" class="status" style="display:none;"></div>
+
+  <script>
+    let pollInterval;
+
+    document.getElementById('startBtn').onclick = () => {
+      const token = document.getElementById('tokenInput').value.trim();
+      if (!token) {
+        showStatus('❌ 请输入有效的 token', 'error');
+        return;
+      }
+
+      showStatus('✅ 轮询已启动，正在请求 /api/index-progress...', 'success');
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = 'inline-block';
+
+      // 清除旧轮询
+      if (pollInterval) clearInterval(pollInterval);
+
+      // 开始轮询
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/index-progress', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const data = await res.json();
+          document.getElementById('percent').textContent = data.percent || 0;
+          document.getElementById('stepText').textContent = data.step || '未知步骤';
+          document.getElementById('progressBar').value = data.percent || 0;
+
+          if (data.percent === 100) {
+            showStatus('🎉 索引生成完成！', 'success');
+            clearInterval(pollInterval);
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+          }
+        } catch (err) {
+          // 静默失败（如 401/404），继续轮询
+        }
+      }, 1000);
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      showStatus('⏹️ 轮询已停止', 'success');
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('stopBtn').style.display = 'none';
+    };
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = `status ${type}`;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

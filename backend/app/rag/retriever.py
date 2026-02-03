@@ -11,9 +11,10 @@ class Retriever:
         self.top_k = top_k
         self.client = OpenAI(
             api_key=settings.QWEN_API_KEY,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            timeout=120.0
         )
-        self.embed_model = "text-embedding-v4"
+        self.embed_model = "text-embedding-v3"
 
         self.faiss_index = None
         self.metas = []

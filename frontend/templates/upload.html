@@ -2,31 +2,52 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="知识库" />
   <title>知识库管理</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
-  <div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-      <h1 class="text-3xl font-bold mb-8 text-center">知识库管理</h1>
+  <!-- 移动端安全距离 -->
+  <style>
+    @supports (padding: max(0px)) {
+      body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+        padding-top: max(0px, env(safe-area-inset-top));
+        padding-bottom: max(0px, env(safe-area-inset-bottom));
+      }
+    }
+  </style>
+  <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <div class="w-full sm:max-w-4xl mx-auto">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center">知识库管理</h1>
 
       <!-- 上传新PDF -->
-      <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 class="text-xl font-semibold mb-4">上传新PDF</h2>
+      <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-6 sm:mb-8">
+        <h2 class="text-xl sm:text-xl font-semibold mb-4">上传新PDF</h2>
         <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
           <div>
-            <label for="pdfFile" class="block text-sm font-medium text-gray-700">选择PDF文件</label>
-            <input type="file" id="pdfFile" name="file" accept="application/pdf" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" required />
+            <label for="pdfFile" class="block text-xs sm:text-sm font-medium text-gray-700">选择PDF文件</label>
+            <input type="file" id="pdfFile" name="file" accept="application/pdf" class="mt-1 block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" required />
           </div>
-          <button type="submit" class="bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">上传PDF</button>
+          <div id="progressContainer" class="hidden">
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+              <div id="progressBar" class="bg-orange-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-xs sm:text-sm text-gray-600 mt-1">准备上传...</p>
+          </div>
+          <button type="submit" id="uploadBtn" class="w-full bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 active:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 text-sm sm:text-base font-medium">上传PDF</button>
         </form>
-        <div id="uploadMessage" class="mt-4"></div>
+        <div id="uploadMessage" class="mt-4 text-xs sm:text-sm"></div>
       </div>
 
       <!-- 现有PDF列表 -->
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-semibold mb-4">现有PDF文件</h2>
-        <div id="pdfList" class="space-y-2">
+      <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <h2 class="text-xl sm:text-xl font-semibold mb-4">现有PDF文件</h2>
+        <div id="pdfList" class="space-y-2 text-xs sm:text-sm">
           <!-- PDF列表将在这里动态加载 -->
         </div>
       </div>
@@ -116,32 +137,124 @@
         return;
       }
 
-      uploadMessage.textContent = '上传中...';
-      uploadMessage.className = 'mt-4 text-blue-500';
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const uploadBtn = document.getElementById('uploadBtn');
+
+      progressContainer.classList.remove('hidden');
+      progressBar.style.width = '0%';
+      progressText.textContent = '准备上传...';
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = '上传中...';
 
       try {
         formData.append('token', token);
-        const response = await fetch('/api/upload-pdf', {
-          method: 'POST',
-          body: formData
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+            progressText.textContent = `上传中... ${Math.round(percentComplete)}%`;
+          }
         });
-
-        if (response.ok) {
-          const result = await response.json();
-          uploadMessage.textContent = result.message;
-          uploadMessage.className = 'mt-4 text-green-500';
-          uploadForm.reset();
-          loadPdfList(); // 重新加载列表
-        } else {
-          const error = await response.json();
-          uploadMessage.textContent = error.detail || '上传失败';
+        
+        xhr.addEventListener('load', () => {
+          progressText.textContent = '处理中，请稍候...';
+          progressBar.style.width = '100%';
+        });
+        
+        xhr.addEventListener('loadend', async () => {
+          if (xhr.status === 200) {
+            const result = JSON.parse(xhr.responseText);
+            uploadMessage.textContent = result.message;
+            uploadMessage.className = 'mt-4 text-green-500';
+            uploadForm.reset();
+            
+            // 开始监控索引生成进度
+            monitorIndexProgress();
+            
+            loadPdfList(); // 重新加载列表
+          } else {
+            try {
+              const error = JSON.parse(xhr.responseText);
+              uploadMessage.textContent = error.detail || '上传失败';
+            } catch {
+              uploadMessage.textContent = '上传失败';
+            }
+            uploadMessage.className = 'mt-4 text-red-500';
+            progressContainer.classList.add('hidden');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '上传PDF';
+          }
+        });
+        
+        xhr.addEventListener('error', () => {
+          uploadMessage.textContent = '网络错误';
           uploadMessage.className = 'mt-4 text-red-500';
-        }
+          progressContainer.classList.add('hidden');
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = '上传PDF';
+        });
+        
+        xhr.open('POST', '/api/upload-pdf');
+        xhr.send(formData);
+        
       } catch (error) {
         uploadMessage.textContent = '网络错误';
         uploadMessage.className = 'mt-4 text-red-500';
+        progressContainer.classList.add('hidden');
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '上传PDF';
       }
     });
+
+    // 监控索引生成进度
+    async function monitorIndexProgress() {
+      const token = localStorage.getItem('token');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      
+      progressContainer.classList.remove('hidden');
+      progressText.textContent = '生成索引中...';
+      
+      const checkProgress = async () => {
+        try {
+          const response = await fetch('/api/index-progress', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const progress = await response.json();
+            progressBar.style.width = progress.percent + '%';
+            progressText.textContent = `${progress.step}... ${progress.percent}%`;
+            
+            if (progress.percent < 100) {
+              setTimeout(checkProgress, 1000); // 每秒检查一次
+            } else {
+              // 完成
+              setTimeout(() => {
+                progressContainer.classList.add('hidden');
+                uploadMessage.textContent = '索引生成完成';
+              }, 2000);
+            }
+          } else {
+            progressText.textContent = '获取进度失败';
+            setTimeout(() => progressContainer.classList.add('hidden'), 2000);
+          }
+        } catch (error) {
+          progressText.textContent = '网络错误';
+          setTimeout(() => progressContainer.classList.add('hidden'), 2000);
+        }
+      };
+      
+      checkProgress();
+    }
 
     // 页面加载时获取PDF列表
     loadPdfList();

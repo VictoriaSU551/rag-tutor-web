@@ -11,6 +11,25 @@ html,body{
 }
 body{
   background: linear-gradient(180deg, var(--bg), #ffffff);
+  /* 移动端安全区域处理 */
+  @supports (padding: max(0px)) {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+/* 移动设备优化 */
+@media (max-width: 768px) {
+  html, body {
+    font-size: 16px; /* 防止iOS自动缩放 */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button, input, textarea, select {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 .chatbox{
   border: 1.5px solid var(--orange-border);
@@ -219,16 +238,250 @@ body{
   font-weight: 500;
   cursor: help;
 }
+
+/* ============ 移动响应式设计 ============ */
 @media (max-width: 768px) {
-  main {
-    grid-template-columns: 1fr !important;
+  /* 全局移动优化 */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
-  main > section {
-    grid-column: 1 !important;
+
+  /* 按钮和交互元素：更大的点击区域 */
+  button, input, textarea {
+    min-height: 44px;
+    min-width: 44px;
   }
-  /* 隐藏左侧会话列表和右侧练习题，只显示中间对话 */
-  main > section:nth-child(1),
-  main > section:nth-child(3) {
-    display: none;
+
+  /* 头部响应式 */
+  header {
+    gap: 8px !important;
+  }
+
+  header div {
+    font-size: 14px !important;
+  }
+
+  /* 布局容器：移动端垂直堆叠 */
+  .layout-container {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .layout-section {
+    min-width: auto !important;
+    flex-basis: auto !important;
+  }
+
+  [data-section="sessions"],
+  [data-section="quiz"] {
+    display: none !important;
+  }
+
+  [data-section="chat"] {
+    flex: 1 !important;
+    min-width: auto !important;
+  }
+
+  .resize-handle {
+    display: none !important;
+  }
+
+  /* 修改分界线样式 */
+  .resize-handle {
+    width: auto !important;
+    height: 4px !important;
+    cursor: row-resize !important;
+  }
+
+  /* 消息内容优化 */
+  .message-content {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .message-content h1 { font-size: 1.3em; }
+  .message-content h2 { font-size: 1.1em; }
+  .message-content h3 { font-size: 1em; }
+
+  .message-content code {
+    font-size: 0.85em;
+  }
+
+  .message-content pre {
+    padding: 10px;
+    font-size: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 输入框响应式 */
+  textarea {
+    font-size: 16px; /* 防止iOS自动缩放 */
+    line-height: 1.5 !important;
+    padding: 8px 12px !important;
+  }
+
+  /* 模态框：全屏显示 */
+  .fixed.inset-0 {
+    padding: 8px !important;
+  }
+
+  .chatbox {
+    max-height: 90vh;
+    border-radius: 12px;
+  }
+
+  /* 弹框内容文本大小 */
+  .chatbox .text-xl {
+    font-size: 18px;
+  }
+
+  .chatbox .text-lg {
+    font-size: 16px;
+  }
+
+  /* 表格响应式 */
+  .message-content table {
+    font-size: 12px;
+    overflow-x: auto;
+  }
+
+  .message-content th, .message-content td {
+    padding: 6px;
+  }
+
+  /* 列表间距 */
+  .message-content ul, .message-content ol {
+    margin: 8px 0 !important;
+    padding-left: 20px !important;
+  }
+
+  .message-content li {
+    margin: 4px 0 !important;
+  }
+
+  /* 按钮样式：移动端优化 */
+  .text-orange-600,
+  .text-orange-700 {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+
+  /* 修复移动端模态框显示 */
+  #wrongModal,
+  #authModal,
+  #knowledgeBaseModal {
+    padding: 8px !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+  }
+
+  #wrongModal > div,
+  #authModal > div,
+  #knowledgeBaseModal > div {
+    max-height: 90vh;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+  }
+
+  /* 错题本模态框 - 竖屏模式下堆叠 */
+  .flex-col.sm\\:flex-row {
+    flex-direction: column !important;
+  }
+
+  .flex-1.sm\\:flex-1,
+  .flex-\\[2\\].sm\\:flex-\\[2\\] {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* 隐藏桌面特定文本 */
+  .hidden.md\\:block {
+    display: none !important;
+  }
+
+  /* 缩小字体预防溢出 */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  textarea {
+    font-size: 16px !important; /* iOS修复 */
+  }
+
+  /* 削减边距和填充 */
+  .section-header {
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .collapse-btn {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* 移动端隐藏右侧面板按钮 */
+  [data-toggle="quiz"],
+  [data-toggle="sessions"] {
+    display: none !important;
+  }
+}
+
+/* 超小屏幕（<640px）额外优化 */
+@media (max-width: 640px) {
+  .chatbox {
+    border-radius: 12px;
+    padding: 12px !important;
+  }
+
+  .layout-container {
+    padding: 0 !important;
+  }
+
+  header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .section-header {
+    font-size: 14px;
+  }
+
+  /* 进一步减小文本 */
+  .message-content {
+    font-size: 12px;
+  }
+
+  .message-header {
+    gap: 4px !important;
+    font-size: 10px;
+  }
+
+  .role-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  /* 触摸友好的间距 */
+  button {
+    padding: 10px 12px;
+  }
+}
+
+/* 平板设备（768px - 1024px）优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .layout-container {
+    gap: 8px !important;
+  }
+
+  [data-section="sessions"] {
+    flex-basis: 180px !important;
+  }
+
+  [data-section="quiz"] {
+    flex-basis: 200px !important;
+  }
+
+  .message-content {
+    font-size: 13px;
   }
 }

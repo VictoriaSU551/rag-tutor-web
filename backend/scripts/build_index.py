@@ -21,12 +21,13 @@ def get_embeddings(texts):
     
     client = OpenAI(
         api_key=api_key,
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        timeout=120.0
     )
     
-    # 云端模型使用 text-embedding-v4
+    # 云端模型使用 text-embedding-v3
     response = client.embeddings.create(
-        model="text-embedding-v4",
+        model="text-embedding-v3",
         input=texts
     )
     
@@ -44,11 +45,11 @@ def main():
 
     print("2) 调用 DashScope API 计算向量并写入FAISS...")
     print(f"   - 总文本数: {len(texts)}")
-    print("   - 向量模型: text-embedding-v4")
+    print("   - 向量模型: text-embedding-v3")
     print("   - API 端点: https://dashscope.aliyuncs.com/compatible-mode/v1")
     
     # 分批调用 API（避免单次请求过大）
-    batch_size = 10
+    batch_size = 5  # 减少批次大小以避免超时
     all_embeddings = []
     
     for i in range(0, len(texts), batch_size):
