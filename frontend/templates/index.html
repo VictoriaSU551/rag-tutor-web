@@ -242,13 +242,6 @@
       </div>
     </header>
 
-    <!-- 移动端标签导航 -->
-    <div class="mobile-tabs">
-      <button class="mobile-tab-btn active" data-tab="chat" type="button">对话</button>
-      <button class="mobile-tab-btn" data-tab="sessions" type="button">会话</button>
-      <button class="mobile-tab-btn" data-tab="quiz" type="button">练习题</button>
-    </div>
-
     <main class="flex-1 layout-container min-h-0">
       <!-- 左：会话列表 -->
       <section class="chatbox layout-section p-4" data-section="sessions">
@@ -268,6 +261,8 @@
       <section class="chatbox layout-section p-4" data-section="chat">
         <div class="section-header">
           <div class="font-semibold flex-1">对话</div>
+          <button id="btnShowSessions" class="md:hidden text-sm text-blue-600 font-medium mr-2">会话</button>
+          <button id="btnShowQuiz" class="md:hidden text-sm text-green-600 font-medium mr-2">练习题</button>
           <button id="btnWrongbook" class="text-sm text-orange-700 underline">错题本</button>
         </div>
         <div class="section-content">
@@ -358,79 +353,90 @@
     </div>
   </div>
 
+  <!-- 会话列表弹窗 -->
+  <div id="sessionsModal" class="fixed inset-0 bg-black/40 hidden flex flex-col items-center justify-center p-2 sm:p-4 z-50">
+    <div class="chatbox w-full sm:max-w-2xl h-[90vh] sm:h-[70vh] p-4 sm:p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-lg sm:text-xl font-semibold">会话列表</div>
+        <button id="btnCloseSessions" class="text-gray-500 text-2xl leading-none">×</button>
+      </div>
+
+      <div class="flex-1 overflow-auto">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm text-gray-600">选择一个会话继续对话</div>
+          <button id="btnNewSessionModal" class="text-sm text-orange-600 font-medium px-3 py-1 border border-orange-600 rounded hover:bg-orange-50">新建会话</button>
+        </div>
+        <div id="sessionListModal" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 练习题弹窗 -->
+  <div id="quizModal" class="fixed inset-0 bg-black/40 hidden flex flex-col items-center justify-center p-2 sm:p-4 z-50">
+    <div class="chatbox w-full sm:max-w-4xl h-[90vh] sm:h-[80vh] p-4 sm:p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-lg sm:text-xl font-semibold">练习题</div>
+        <button id="btnCloseQuiz" class="text-gray-500 text-2xl leading-none">×</button>
+      </div>
+
+      <div class="flex items-center gap-2 mb-3">
+        <select id="quizDifficultyModal" class="text-sm border rounded px-3 py-1.5">
+          <option value="medium">中等难度</option>
+          <option value="easy">简单</option>
+          <option value="hard">困难</option>
+        </select>
+        <button id="btnClearAnswersModal" class="text-sm text-orange-600 font-medium hidden">清空答案</button>
+      </div>
+
+      <div class="flex-1 overflow-auto">
+        <div id="quizBoxModal" class="text-sm text-gray-700 space-y-4">
+          <div class="text-center text-gray-400 py-8">暂无练习题（先提问生成）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script>
 // 移动端标签页管理
-class MobileTabManager {
-  constructor() {
-    this.activeTab = 'chat';
-    console.log('[MobileTab] 构造函数执行');
-  }
+// ==================== 移动端弹窗管理 ====================
+function showSessionsModal() {
+  document.getElementById('sessionsModal').classList.remove('hidden');
+  document.getElementById('sessionsModal').classList.add('flex');
+  // 复制会话列表到弹窗
+  const sessionList = document.getElementById('sessionList').cloneNode(true);
+  const modalList = document.getElementById('sessionListModal');
+  modalList.innerHTML = '';
+  modalList.appendChild(sessionList);
+  // 移除ID避免冲突
+  modalList.querySelector('#sessionList').removeAttribute('id');
+}
 
-  init() {
-    console.log('[MobileTab] init开始');
-    const buttons = document.querySelectorAll('.mobile-tab-btn');
-    console.log('[MobileTab] 找到按钮数:', buttons.length);
-    
-    if (buttons.length === 0) {
-      console.error('[MobileTab] 未找到标签按钮！');
-      return;
-    }
-    
-    buttons.forEach((btn, index) => {
-      const tabName = btn.getAttribute('data-tab');
-      console.log(`[MobileTab] 按钮${index}: ${tabName}`);
-      
-      btn.addEventListener('click', () => {
-        console.log(`[MobileTab] 点击: ${tabName}`);
-        this.switchTab(tabName);
-      }, false);
-      
-      // 添加触摸事件支持
-      btn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        console.log(`[MobileTab] 触摸: ${tabName}`);
-        this.switchTab(tabName);
-      }, false);
-    });
-    
-    // 初始化显示chat标签
-    this.switchTab('chat');
-    console.log('[MobileTab] init完成');
-  }
+function closeSessionsModal() {
+  document.getElementById('sessionsModal').classList.add('hidden');
+  document.getElementById('sessionsModal').classList.remove('flex');
+}
 
-  switchTab(tabName) {
-    console.log(`[MobileTab] 切换到: ${tabName}`);
-    if (!tabName) return;
-    
-    // 更新按钮状态
-    const buttons = document.querySelectorAll('.mobile-tab-btn');
-    buttons.forEach(btn => {
-      if (btn.getAttribute('data-tab') === tabName) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
+function showQuizModal() {
+  document.getElementById('quizModal').classList.remove('hidden');
+  document.getElementById('quizModal').classList.add('flex');
+  // 复制练习题到弹窗
+  const quizBox = document.getElementById('quizBox').cloneNode(true);
+  const modalBox = document.getElementById('quizBoxModal');
+  modalBox.innerHTML = '';
+  modalBox.appendChild(quizBox);
+  // 移除ID避免冲突
+  modalBox.querySelector('#quizBox').removeAttribute('id');
+  // 同步难度选择
+  document.getElementById('quizDifficultyModal').value = document.getElementById('quizDifficulty').value;
+}
 
-    // 更新面板显示
-    const sections = document.querySelectorAll('.layout-section');
-    console.log(`[MobileTab] 找到面板数: ${sections.length}`);
-    sections.forEach(section => {
-      const sectionName = section.getAttribute('data-section');
-      if (sectionName === tabName) {
-        section.classList.add('active');
-        console.log(`[MobileTab] 激活面板: ${sectionName}`);
-      } else {
-        section.classList.remove('active');
-      }
-    });
-
-    this.activeTab = tabName;
-    localStorage.setItem('mobileTab', tabName);
-  }
+function closeQuizModal() {
+  document.getElementById('quizModal').classList.add('hidden');
+  document.getElementById('quizModal').classList.remove('flex');
 }
 
 let MOBILE_TABS = null;
+
 
 let TOKEN = localStorage.getItem("token") || "";
 let USER = JSON.parse(localStorage.getItem("user") || "null");
@@ -803,6 +809,8 @@ async function switchSession(sessionId){
   await loadSessions();
   await loadHistory();
   await loadQuiz();
+  // 如果会话弹窗打开，关闭它
+  closeSessionsModal();
 }
 
 async function createNewSession(){
@@ -1370,6 +1378,7 @@ textarea.addEventListener("input", () => {
 // 初始化输入框高度
 autoResizeTextarea(textarea);
 
+// 弹窗按钮事件
 document.getElementById("btnWrongbook").onclick = async ()=>{
   try{
     document.getElementById("wrongModal").classList.remove("hidden");
@@ -1385,6 +1394,35 @@ document.getElementById("btnCloseWrong").onclick = ()=>{
   document.getElementById("wrongModal").classList.remove("flex");
 };
 
+document.getElementById("btnShowSessions").onclick = ()=>{
+  showSessionsModal();
+};
+
+document.getElementById("btnCloseSessions").onclick = ()=>{
+  closeSessionsModal();
+};
+
+document.getElementById("btnNewSessionModal").onclick = async ()=>{
+  closeSessionsModal();
+  // 调用原来的新建会话函数
+  document.getElementById("btnNewSession").click();
+};
+
+document.getElementById("btnShowQuiz").onclick = ()=>{
+  showQuizModal();
+};
+
+document.getElementById("btnCloseQuiz").onclick = ()=>{
+  closeQuizModal();
+};
+
+// 同步难度选择
+document.getElementById("quizDifficultyModal").onchange = (e)=>{
+  document.getElementById("quizDifficulty").value = e.target.value;
+  document.getElementById("quizDifficulty").dispatchEvent(new Event('change'));
+};
+
+
 document.getElementById("btnLogout").onclick = ()=>{
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -1394,14 +1432,8 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
-  // 检测是否为移动端
-  const isMobile = window.innerWidth <= 768;
-  console.log('[Init] 窗口宽度:', window.innerWidth, '是否移动端:', isMobile);
-  
-  // 初始化响应式布局（仅在非移动端初始化）
-  if (!isMobile) {
-    layoutManager = new LayoutManager();
-  }
+  // 初始化响应式布局
+  layoutManager = new LayoutManager();
   
   if(TOKEN && USER){
     try{
@@ -1430,14 +1462,6 @@ document.getElementById("btnLogout").onclick = ()=>{
   }else{
     showAuth(true);
   }
-  
-  // 移动端标签页初始化
-  console.log('[Init] 准备初始化移动端标签页...');
-  setTimeout(() => {
-    console.log('[Init] setTimeout执行，创建MobileTabManager');
-    MOBILE_TABS = new MobileTabManager();
-    MOBILE_TABS.init();
-  }, 300);
 })();
 
 // ==================== 错题本管理 ====================
