@@ -22,6 +22,9 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# 加载 .env 文件
+source .env
+
 # 默认总是重新构建，可通过参数禁用
 BUILD_FLAG="--build"
 if [ "$1" = "--no-build" ]; then
@@ -36,19 +39,22 @@ docker compose up $BUILD_FLAG -d
 sleep 3
 
 # 获取访问地址
-if [ -n "$SERVER_IP" ]; then
-    FRONTEND_URL="http://$SERVER_IP:8002"
-    BACKEND_URL="http://$SERVER_IP:8000"
-else
-    # 自动获取公网 IP（优先外网，fallback 内网）
-    PUBLIC_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
-    # 检查是否为本地地址
-    if [ "$PUBLIC_IP" = "localhost" ] || [ "$PUBLIC_IP" = "127.0.0.1" ]; then
-        FRONTEND_URL="http://localhost:8002"
-        BACKEND_URL="http://localhost:8000"
+# 优先使用 .env 中配置的 URL，其次使用 SERVER_IP，最后自动检测
+if [ -z "$FRONTEND_URL" ] && [ -z "$BACKEND_URL" ]; then
+    if [ -n "$SERVER_IP" ]; then
+        FRONTEND_URL="http://$SERVER_IP:8002"
+        BACKEND_URL="http://$SERVER_IP:8000"
     else
-        FRONTEND_URL="http://$PUBLIC_IP:8002"
-        BACKEND_URL="http://$PUBLIC_IP:8000"
+        # 自动获取公网 IP（优先外网，fallback 内网）
+        PUBLIC_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+        # 检查是否为本地地址
+        if [ "$PUBLIC_IP" = "localhost" ] || [ "$PUBLIC_IP" = "127.0.0.1" ]; then
+            FRONTEND_URL="http://localhost:8002"
+            BACKEND_URL="http://localhost:8000"
+        else
+            FRONTEND_URL="http://$PUBLIC_IP:8002"
+            BACKEND_URL="http://$PUBLIC_IP:8000"
+        fi
     fi
 fi
 
@@ -57,7 +63,7 @@ echo "✅ 启动完成"
 echo ""
 echo "🌐 访问地址:"
 echo "   前端: $FRONTEND_URL"
-echo "   后端: $BACKEND_URL/api"
+echo "   后端: $BACKEND_URL"
 echo "   健康检查: $BACKEND_URL/api/health"
 echo ""
 echo "📋 常用命令:"
