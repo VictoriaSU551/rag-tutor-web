@@ -1,5 +1,5 @@
 /** 后端服务地址 */
-const baseUrl = 'http://127.0.0.1:8000';
+const baseUrl = 'https://www.csstudy551.top';
 
 /** 是否使用mock代替api返回 */
 const config = {
