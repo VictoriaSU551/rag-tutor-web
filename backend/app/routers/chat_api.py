@@ -337,10 +337,25 @@ def generate_exercise(session_id: str, token: str = None, message_index: int = N
     meta["exercised_message_indices"] = exercised_indices
     session.meta = json.dumps(meta, ensure_ascii=False)
 
+    # 同时保存到独立的 quiz_question 表
+    quiz_q = models.QuizQuestion(
+        user_id=uid,
+        session_id=session_id,
+        question=exercise_data.get("question", ""),
+        options=json.dumps(exercise_data.get("options"), ensure_ascii=False) if exercise_data.get("options") else None,
+        correct_answer=exercise_data.get("answer", exercise_data.get("correct_answer", "")),
+        explanation=exercise_data.get("explanation"),
+        difficulty=exercise_data.get("difficulty", difficulty),
+        source_question=question,
+        message_index=target_index,
+        created_at=int(_time.time()),
+    )
+    db.add(quiz_q)
+
     db.add(session)
     db.commit()
 
-    return {"ok": True, "data": exercise_data, "exercise_index": len(existing_exercises) - 1}
+    return {"ok": True, "data": exercise_data, "exercise_index": len(existing_exercises) - 1, "quiz_question_id": quiz_q.id}
 
 @router.post("/sessions/{session_id}/generate_title")
 def generate_title(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..auth import parse_token, get_token_from_request
 from .. import models
-from ..schemas import QuizAnswerIn, AddWrongIn, AddManualWrongIn
+from ..schemas import QuizAnswerIn, AddWrongIn, AddManualWrongIn, QuizQuestionOut
 
 router = APIRouter(prefix="/api", tags=["quiz"])
 
@@ -242,4 +242,125 @@ def delete_wrong_item(token: str = None, index: int = None, request: Request = N
     meta["wrong_questions"] = wrong_questions
     save_session_meta(user, meta, db)
 
+    return {"ok": True}
+
+
+# ==================== 题目表 API ====================
+
+@router.get("/quiz_questions")
+def list_quiz_questions(
+    token: str = None,
+    session_id: str = None,
+    difficulty: str = None,
+    page: int = 1,
+    page_size: int = 20,
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """获取当前用户的所有生成过的题目，支持按 session 和难度筛选，分页"""
+    try:
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    query = db.query(models.QuizQuestion).filter(models.QuizQuestion.user_id == uid)
+
+    if session_id:
+        query = query.filter(models.QuizQuestion.session_id == session_id)
+    if difficulty:
+        query = query.filter(models.QuizQuestion.difficulty == difficulty)
+
+    total = query.count()
+    items = query.order_by(models.QuizQuestion.created_at.desc()) \
+                 .offset((page - 1) * page_size) \
+                 .limit(page_size) \
+                 .all()
+
+    result = []
+    for q in items:
+        options = None
+        if q.options:
+            try:
+                options = json.loads(q.options)
+            except:
+                options = None
+        result.append({
+            "id": q.id,
+            "user_id": q.user_id,
+            "session_id": q.session_id,
+            "question": q.question,
+            "options": options,
+            "correct_answer": q.correct_answer,
+            "explanation": q.explanation,
+            "difficulty": q.difficulty,
+            "source_question": q.source_question,
+            "message_index": q.message_index,
+            "created_at": q.created_at,
+        })
+
+    return {"total": total, "page": page, "page_size": page_size, "items": result}
+
+
+@router.get("/quiz_questions/{question_id}")
+def get_quiz_question(question_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
+    """获取单个题目详情"""
+    try:
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    q = db.query(models.QuizQuestion).filter(
+        models.QuizQuestion.id == question_id,
+        models.QuizQuestion.user_id == uid,
+    ).first()
+
+    if not q:
+        raise HTTPException(status_code=404, detail="题目不存在")
+
+    options = None
+    if q.options:
+        try:
+            options = json.loads(q.options)
+        except:
+            options = None
+
+    return {
+        "id": q.id,
+        "user_id": q.user_id,
+        "session_id": q.session_id,
+        "question": q.question,
+        "options": options,
+        "correct_answer": q.correct_answer,
+        "explanation": q.explanation,
+        "difficulty": q.difficulty,
+        "source_question": q.source_question,
+        "message_index": q.message_index,
+        "created_at": q.created_at,
+    }
+
+
+@router.delete("/quiz_questions/{question_id}")
+def delete_quiz_question(question_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
+    """删除指定题目"""
+    try:
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    q = db.query(models.QuizQuestion).filter(
+        models.QuizQuestion.id == question_id,
+        models.QuizQuestion.user_id == uid,
+    ).first()
+
+    if not q:
+        raise HTTPException(status_code=404, detail="题目不存在")
+
+    db.delete(q)
+    db.commit()
     return {"ok": True}

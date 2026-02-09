@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.db import engine, Base
-from app.models import User, Session  # 导入模型以确保它们被注册
+from app.models import User, Session, QuizQuestion  # 导入模型以确保它们被注册
 
 def init_db():
     """创建所有数据库表"""
