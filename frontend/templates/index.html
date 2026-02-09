@@ -237,7 +237,7 @@
       <section class="chatbox layout-section p-4" data-section="quiz">
         <div class="section-header">
           <button class="collapse-btn" data-toggle="quiz" title="展开/收起">▶</button>
-          <div class="font-semibold flex-1">练习题</div>
+          <div class="font-semibold flex-1">题目列表</div>
           <select id="quizDifficulty" class="text-xs border rounded px-2 py-1 mr-2">
             <option value="medium">中等</option>
             <option value="easy">简单</option>
@@ -309,7 +309,7 @@ let TOKEN = localStorage.getItem("token") || "";
 let USER = JSON.parse(localStorage.getItem("user") || "null");
 let SESSION_ID = localStorage.getItem("session_id") || "";
 let SESSIONS = [];
-let EXERCISES = [];  // 保存当前会话的所有习题
+let EXERCISES = [];  // 保存所有生成过的习题（跨会话）
 let WRONGBOOK = [];  // 保存用户的错题本
 let ES = null;
 let QUIZ_LOADING = false; // 习题生成中的标记
@@ -822,10 +822,11 @@ function addMessage(container, role, content, timestamp, sources, messageIndex){
 }
 
 async function loadQuiz(){
-  if(!SESSION_ID) return;
+  if(!TOKEN) return;
   try{
-    const session = await api(`/api/sessions/${SESSION_ID}`);
-    const exercises = session.exercises || [];
+    // 从独立题目表加载所有题目（不限会话），page_size 大一些一次拉完
+    const result = await api(`/api/quiz_questions?page_size=200`);
+    const exercises = (result.items || []).reverse();  // 接口按 created_at desc，反转后旧题在上、新题在下
     EXERCISES = exercises;  // 保存到全局变量
     const box = document.getElementById("quizBox");
     
@@ -1006,7 +1007,9 @@ async function submitQuizAnswer(quizIndex){
   }
   
   const resultDiv = document.getElementById(`quiz-result-${quizIndex}`);
-  const isCorrect = userAnswer === exercise.correct_answer;
+  // 兼容 correct_answer（新表）和 answer（旧 exercises 字段）
+  const correctAnswer = exercise.correct_answer || exercise.answer || '';
+  const isCorrect = userAnswer === correctAnswer;
   
   // 创建结果容器
   const resultContainer = document.createElement("div");
@@ -1019,7 +1022,7 @@ async function submitQuizAnswer(quizIndex){
     : "p-2 rounded bg-red-100 text-red-700";
   resultLabel.innerText = isCorrect 
     ? "✓ 答对了！" 
-    : `✗ 答错了，正确答案是 ${exercise.correct_answer}`;
+    : `✗ 答错了，正确答案是 ${correctAnswer}`;
   resultContainer.appendChild(resultLabel);
   
   // 可折叠的解析
@@ -1496,7 +1499,7 @@ async function addToWrongbook(quizIndex){
     await api("/api/quiz/add_manual_wrong", "POST", {
       question: exercise.question,
       options: exercise.options,
-      correct_answer: exercise.correct_answer,
+      correct_answer: exercise.correct_answer || exercise.answer || '',
       explanation: exercise.explanation,
       difficulty: exercise.difficulty
     });

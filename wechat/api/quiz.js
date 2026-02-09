@@ -59,10 +59,22 @@ export const deleteWrongQuestion = (index) => {
   return request(`/api/wrongbook/${index}`, 'DELETE', { token });
 };
 
+/**
+ * 获取所有生成过的题目（跨会话）
+ * @param {number} page 页码
+ * @param {number} pageSize 每页条数
+ * @returns {Promise}
+ */
+export const getQuizQuestions = (page = 1, pageSize = 200) => {
+  const token = wx.getStorageSync('access_token');
+  return request('/api/quiz_questions', 'GET', { token, page, page_size: pageSize });
+};
+
 export default {
   getCurrentQuiz,
   submitQuizAnswer,
   addWrongQuestion,
   getWrongBook,
   deleteWrongQuestion,
+  getQuizQuestions,
 };

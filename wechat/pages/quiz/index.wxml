@@ -20,6 +20,10 @@
 
 <!-- 练习题界面 -->
 <scroll-view class="quiz-container" scroll-y wx:if="{{ activeTab === 'practice' }}">
+  <view wx:if="{{ quizList.length === 0 }}" class="empty-state">
+    <view class="empty-icon">📝</view>
+    <text>暂无题目，在对话中点击"生成一道题"</text>
+  </view>
   <view class="quiz-question" wx:for="{{ quizList }}" wx:key="index">
     <!-- 题目信息头 -->
     <view class="question-header">

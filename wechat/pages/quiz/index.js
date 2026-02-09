@@ -3,7 +3,8 @@ import {
   submitQuizAnswer, 
   addWrongQuestion, 
   getWrongBook,
-  deleteWrongQuestion 
+  deleteWrongQuestion,
+  getQuizQuestions
 } from '../../api/quiz';
 
 Page({
@@ -13,15 +14,48 @@ Page({
     wrongList: [],
     loading: true,
     submitting: false,
-    selectedSessionId: null,
   },
 
   onLoad() {
+    this.loadQuizQuestions();
     this.loadWrongBook();
   },
 
   onShow() {
+    this.loadQuizQuestions();
     this.loadWrongBook();
+  },
+
+  async loadQuizQuestions() {
+    try {
+      this.setData({ loading: true });
+      const result = await getQuizQuestions(1, 200);
+      const items = (result.items || []).reverse(); // 旧题在上，新题在下
+      // 转换为前端需要的格式
+      const quizList = items.map(item => ({
+        id: item.id,
+        question: item.question,
+        options: item.options || [],
+        correctAnswer: this.optionToIndex(item.correct_answer, item.options),
+        analysis: item.explanation || '暂无解析',
+        type: item.difficulty || '中等',
+        userAnswer: null,
+        submitted: false,
+        showAnalysis: false,
+      }));
+      this.setData({ quizList, loading: false });
+    } catch (error) {
+      console.error('获取题目列表失败:', error);
+      this.setData({ loading: false });
+    }
+  },
+
+  // 将答案字母转为选项索引 (A->0, B->1, ...)
+  optionToIndex(answer, options) {
+    if (!answer || !options) return 0;
+    const letter = answer.trim().charAt(0).toUpperCase();
+    const index = letter.charCodeAt(0) - 65;
+    return (index >= 0 && index < options.length) ? index : 0;
   },
 
   async loadWrongBook() {
@@ -40,6 +74,8 @@ Page({
     
     if (tab === 'wrong') {
       this.loadWrongBook();
+    } else if (tab === 'practice') {
+      this.loadQuizQuestions();
     }
   },
 
@@ -71,13 +107,10 @@ Page({
         return;
       }
 
-      // 调用后端API提交答案
-      const result = await submitQuizAnswer(
-        this.data.selectedSessionId,
-        quiz.userAnswer.toString()
-      );
+      // 本地判题（题目来自独立题目表，不需要 session）
+      const isCorrect = quiz.userAnswer === quiz.correctAnswer;
 
-      if (result.correct) {
+      if (isCorrect) {
         wx.showToast({
           title: '回答正确!',
           icon: 'success',
@@ -90,15 +123,7 @@ Page({
         quiz.submitted = true;
         quiz.showAnalysis = true;
         
-        if (result.can_add_wrong) {
-          this.setData({ 
-            quizList,
-            showAddWrongButton: true,
-            currentQuestionIndex: questionIndex,
-          });
-        } else {
-          this.setData({ quizList });
-        }
+        this.setData({ quizList });
         
         wx.showToast({
           title: '回答不正确',
@@ -108,7 +133,7 @@ Page({
       }
     } catch (error) {
       wx.showToast({
-        title: error.detail || '提交失败',
+        title: '提交失败',
         icon: 'none',
         duration: 2000,
       });
