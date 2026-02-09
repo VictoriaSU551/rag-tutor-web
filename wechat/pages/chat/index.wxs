@@ -23,6 +23,16 @@ function formatTime(time) {
   return Y + '年' + M + '月' + D + '日 ' + formatNum(h) + ':' + formatNum(m);
 }
 
+/** 检查数组是否包含某个值 */
+function includes(arr, val) {
+  if (!arr) return false;
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] === val) return true;
+  }
+  return false;
+}
+
 module.exports = {
   formatTime: formatTime,
+  includes: includes,
 };

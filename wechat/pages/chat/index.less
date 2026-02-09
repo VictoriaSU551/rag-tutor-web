@@ -267,22 +267,6 @@
   margin-left: 8rpx;
 }
 
-/* 知识来源区域 */
-.sources-embedded {
-  display: block;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid rgba(0, 0, 0, 0.1);
-  color: #999;
-}
-
-.sources-embedded .h2w__strong,
-.sources-embedded .h2w__b,
-.sources-embedded .h2w__li,
-.sources-embedded .h2w__ul {
-  color: #999;
-}
-
 .block {
   height: calc(env(safe-area-inset-bottom) + 129rpx);
 }
@@ -333,4 +317,32 @@
 .send-icon {
   width: 40rpx;
   height: 40rpx;
+}
+
+/* 生成一道题按钮 */
+.gen-exercise-wrap {
+  padding: 8rpx 0 8rpx 80rpx;
+}
+
+.gen-exercise-btn {
+  display: inline-block;
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  background-color: #fff7ed;
+  color: #ea9134;
+  border: 1rpx solid #fed7aa;
+  line-height: 1.6;
+}
+
+.gen-exercise-btn[disabled] {
+  opacity: 0.5;
+  color: #999;
+}
+
+.gen-exercise-done {
+  display: inline-block;
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  color: #999;
 }

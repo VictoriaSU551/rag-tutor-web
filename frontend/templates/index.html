@@ -2,10 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="学习助手" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>道道的智能学习助手</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -57,48 +54,6 @@
       max-width: 100%;
       width: 100%;
       overflow: hidden;
-      flex-direction: row;
-    }
-    
-    /* 手机端：垂直堆叠 */
-    @media (max-width: 768px) {
-      .layout-container {
-        flex-direction: column;
-        gap: 0.25rem;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
-      }
-      
-      .layout-section {
-        min-width: auto !important;
-        flex-basis: auto !important;
-      }
-      
-      /* 手机端强制隐藏会话列表和练习题面板 */
-      section[data-section="sessions"],
-      section.layout-section[data-section="sessions"],
-      .chatbox[data-section="sessions"] {
-        display: none !important;
-      }
-      
-      section[data-section="quiz"],
-      section.layout-section[data-section="quiz"],
-      .chatbox[data-section="quiz"] {
-        display: none !important;
-      }
-      
-      /* 手机端对话面板占满全部空间 */
-      section[data-section="chat"],
-      section.layout-section[data-section="chat"],
-      .chatbox[data-section="chat"] {
-        flex: 1 !important;
-        min-width: auto !important;
-        width: 100% !important;
-        display: flex !important;
-      }
-      
-      .resize-handle {
-        display: none !important;
-      }
     }
     
     .layout-section {
@@ -197,8 +152,7 @@
       flex-direction: column;
       flex: 1;
       min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
+      overflow: hidden;
     }
     
     .resize-handle {
@@ -225,33 +179,18 @@
     }
   </style>
 </head>
-  <body class="h-[100dvh] min-h-[100dvh] overflow-hidden bg-white">
-  <!-- 移动端安全距离 -->
-  <style>
-    @supports (padding: max(0px)) {
-      body {
-        padding-left: max(0px, env(safe-area-inset-left));
-        padding-right: max(0px, env(safe-area-inset-right));
-        padding-top: max(0px, env(safe-area-inset-top));
-        padding-bottom: max(0px, env(safe-area-inset-bottom));
-      }
-    }
-  </style>
-  <div class="h-full flex flex-col px-3 md:px-4 py-2 md:py-3">
-    <header class="flex items-center justify-between gap-2 md:gap-4 mb-2 md:mb-3">
-      <div class="hidden md:block flex-1">
+<body class="h-screen overflow-hidden">
+  <div class="h-full flex flex-col px-4 py-3">
+    <header class="flex items-center justify-between gap-4 mb-3">
+      <div>
         <div class="text-2xl font-semibold">道道的智能学习助手</div>
-        <div class="text-sm text-gray-500">今天的每一分努力，都在悄悄重塑明天的你！</div>
+        <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
-      <div class="md:hidden text-center flex-1">
-        <div class="text-lg font-semibold">道道的智能学习助手</div>
-      </div>
-      <div class="flex items-center gap-1 md:gap-3">
-        <button onclick="showKnowledgeBaseModal()" class="px-2 md:px-4 py-1 md:py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 text-xs md:text-sm whitespace-nowrap">知识库</button>
-        <img id="avatar" class="w-8 md:w-10 h-8 md:h-10 rounded-full border" src="/static/img/default_avatar.svg" />
-        <div class="flex flex-col text-xs md:text-sm">
+      <div class="flex items-center gap-3">
+        <img id="avatar" class="w-10 h-10 rounded-full border" src="/static/img/default_avatar.svg" />
+        <div class="text-sm">
           <div id="username" class="font-medium">未登录</div>
-          <button id="btnLogout" class="text-orange-600 hidden text-xs">退出</button>
+          <button id="btnLogout" class="text-orange-600 hidden">退出</button>
         </div>
       </div>
     </header>
@@ -275,17 +214,15 @@
       <section class="chatbox layout-section p-4" data-section="chat">
         <div class="section-header">
           <div class="font-semibold flex-1">对话</div>
-          <button id="btnShowSessions" class="md:hidden text-sm text-blue-600 font-medium mr-2">会话</button>
-          <button id="btnShowQuiz" class="md:hidden text-sm text-green-600 font-medium mr-2">练习题</button>
           <button id="btnWrongbook" class="text-sm text-orange-700 underline">错题本</button>
         </div>
         <div class="section-content">
           <div id="chatArea" class="space-y-3 overflow-auto grow pr-2"></div>
           <div id="sources" class="mt-2 text-xs text-gray-500 border-t pt-2"></div>
-          <div class="mt-3 flex gap-2 items-end" style="padding-bottom: max(20px, env(safe-area-inset-bottom));">
-            <textarea id="q" class="flex-1 border rounded-lg md:rounded-xl p-2 md:p-3 text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-inset resize-none overflow-hidden"
-              placeholder="提问..." rows="1" style="line-height: 1.5; min-height: 40px; max-height: 200px;"></textarea>
-            <button id="btnAsk" class="px-3 md:px-5 py-2 md:py-3 rounded-lg md:rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors flex items-center justify-center flex-shrink-0" style="height: 40px; width: 44px; min-width: 44px;">
+          <div class="mt-3 flex gap-2 items-end">
+            <textarea id="q" class="flex-1 border rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-inset resize-none overflow-hidden"
+              placeholder="输入你的问题（例如：进程与线程区别？死锁的四个必要条件？）" rows="1" style="line-height: 1.5; min-height: 42px; max-height: 200px;"></textarea>
+            <button id="btnAsk" class="px-5 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors flex items-center justify-center flex-shrink-0" style="height: 48px; width: 60px;">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
               </svg>
@@ -310,7 +247,7 @@
         </div>
         <div class="section-content">
           <div id="quizBox" class="text-sm text-gray-700 overflow-auto grow space-y-4">
-            <div class="text-center text-gray-400">暂无练习题（先提问生成）</div>
+            <div class="text-center text-gray-400">暂无练习题（回答后点击"生成一道题"）</div>
           </div>
         </div>
       </section>
@@ -318,189 +255,56 @@
   </div>
 
   <!-- 登录/注册弹窗 -->
-  <div id="authModal" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 sm:p-4">
-    <div class="chatbox w-full max-w-sm sm:max-w-md p-4 sm:p-5 max-h-[90vh] overflow-y-auto">
-      <div class="text-lg sm:text-xl font-semibold">登录 / 注册</div>
-      <div class="text-xs sm:text-sm text-gray-500 mt-1">用户名支持中英文/数字/特殊字符；密码必须为6位数字</div>
+  <div id="authModal" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+    <div class="chatbox w-full max-w-md p-5">
+      <div class="text-xl font-semibold">登录 / 注册</div>
+      <div class="text-sm text-gray-500 mt-1">用户名支持中英文/数字/特殊字符；密码必须为6位数字</div>
 
       <div class="mt-4 space-y-2">
-        <input id="inUser" class="w-full border rounded-lg sm:rounded-xl p-2 sm:p-3 text-sm" placeholder="用户名" />
-        <input id="inPwd"  class="w-full border rounded-lg sm:rounded-xl p-2 sm:p-3 text-sm" placeholder="6位数字密码" />
+        <input id="inUser" class="w-full border rounded-xl p-3" placeholder="用户名" />
+        <input id="inPwd"  class="w-full border rounded-xl p-3" placeholder="6位数字密码" />
       </div>
 
       <div class="mt-4 flex gap-2">
-        <button id="btnLogin" class="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl bg-orange-500 text-white text-sm sm:text-base font-medium active:bg-orange-700 transition-colors">登录</button>
-        <button id="btnReg" class="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-orange-300 text-orange-700 text-sm sm:text-base font-medium active:bg-orange-50 transition-colors">注册</button>
+        <button id="btnLogin" class="flex-1 px-4 py-2 rounded-xl bg-orange-500 text-white font-medium">登录</button>
+        <button id="btnReg" class="flex-1 px-4 py-2 rounded-xl border border-orange-300 text-orange-700 font-medium">注册</button>
       </div>
 
       <div class="mt-4">
-        <div class="text-xs sm:text-sm font-medium">头像（可选）</div>
-        <input id="inAvatar" type="file" accept="image/png,image/jpeg,image/webp" class="mt-2 text-xs sm:text-sm"/>
+        <div class="text-sm font-medium">头像（可选）</div>
+        <input id="inAvatar" type="file" accept="image/png,image/jpeg,image/webp" class="mt-2"/>
         <div class="text-xs text-gray-500 mt-1">不上传则使用默认白色头像</div>
       </div>
 
-      <div id="authErr" class="mt-3 text-xs sm:text-sm text-red-600"></div>
+      <div id="authErr" class="mt-3 text-sm text-red-600"></div>
     </div>
   </div>
 
   <!-- 错题本弹窗 -->
-  <div id="wrongModal" class="fixed inset-0 bg-black/40 hidden flex flex-col sm:items-center sm:justify-center p-2 sm:p-4 z-50">
-    <div class="chatbox w-full sm:max-w-6xl h-[90vh] sm:h-[80vh] p-4 sm:p-5 flex flex-col">
+  <div id="wrongModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
+    <div class="chatbox w-full max-w-6xl h-[80vh] p-5 flex flex-col">
       <div class="flex items-center justify-between mb-4">
-        <div class="text-lg sm:text-xl font-semibold">错题本</div>
-        <button id="btnCloseWrong" class="text-gray-500 text-2xl leading-none">×</button>
+        <div class="text-xl font-semibold">错题本</div>
+        <button id="btnCloseWrong" class="text-gray-500">关闭</button>
       </div>
 
-      <div class="flex flex-col sm:flex-row flex-1 gap-2 sm:gap-4 min-h-0">
-        <!-- 左边：错题列表 -->
-        <div class="sm:flex-1 bg-gray-50 rounded-lg p-3 sm:p-4 overflow-auto">
-          <div class="font-medium mb-3 text-sm sm:text-base">错题列表</div>
-          <div id="wrongList" class="space-y-2 text-sm"></div>
+      <div class="flex flex-1 gap-4 min-h-0">
+        <!-- 左边：错题列表 (1/3) -->
+        <div class="flex-1 bg-gray-50 rounded-lg p-4 overflow-auto">
+          <div class="font-medium mb-3">错题列表</div>
+          <div id="wrongList" class="space-y-2"></div>
         </div>
 
-        <!-- 右边：错题详情 -->
-        <div class="sm:flex-[2] bg-white rounded-lg p-3 sm:p-4 overflow-auto border sm:border-0">
-          <div class="font-medium mb-3 text-sm sm:text-base">错题详情</div>
-          <div id="wrongDetail" class="text-xs sm:text-sm text-gray-500">点击错题题目查看详情</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 会话列表弹窗 -->
-  <div id="sessionsModal" class="fixed inset-0 bg-black/40 hidden flex flex-col items-center justify-center p-2 sm:p-4 z-50">
-    <div class="chatbox w-full sm:max-w-2xl h-[90vh] sm:h-[70vh] p-4 sm:p-5 flex flex-col">
-      <div class="flex items-center justify-between mb-4">
-        <div class="text-lg sm:text-xl font-semibold">会话列表</div>
-        <button id="btnCloseSessions" class="text-gray-500 text-2xl leading-none">×</button>
-      </div>
-
-      <div class="flex-1 overflow-auto">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-sm text-gray-600">选择一个会话继续对话</div>
-          <button id="btnNewSessionModal" class="text-sm text-orange-600 font-medium px-3 py-1 border border-orange-600 rounded hover:bg-orange-50">新建会话</button>
-        </div>
-        <div id="sessionListModal" class="space-y-2"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 练习题弹窗 -->
-  <div id="quizModal" class="fixed inset-0 bg-black/40 hidden flex flex-col items-center justify-center p-2 sm:p-4 z-50">
-    <div class="chatbox w-full sm:max-w-4xl h-[90vh] sm:h-[80vh] p-4 sm:p-5 flex flex-col">
-      <div class="flex items-center justify-between mb-4">
-        <div class="text-lg sm:text-xl font-semibold">练习题</div>
-        <button id="btnCloseQuiz" class="text-gray-500 text-2xl leading-none">×</button>
-      </div>
-
-      <div class="flex items-center gap-2 mb-3">
-        <select id="quizDifficultyModal" class="text-sm border rounded px-3 py-1.5">
-          <option value="medium">中等难度</option>
-          <option value="easy">简单</option>
-          <option value="hard">困难</option>
-        </select>
-        <button id="btnClearAnswersModal" class="text-sm text-orange-600 font-medium hidden">清空答案</button>
-      </div>
-
-      <div class="flex-1 overflow-auto">
-        <div id="quizBoxModal" class="text-sm text-gray-700 space-y-4">
-          <div class="text-center text-gray-400 py-8">暂无练习题（先提问生成）</div>
+        <!-- 右边：错题详情 (2/3) -->
+        <div class="flex-[2] bg-white rounded-lg p-4 overflow-auto">
+          <div class="font-medium mb-3">错题详情</div>
+          <div id="wrongDetail" class="text-sm text-gray-500">请选择左侧的错题查看详情</div>
         </div>
       </div>
     </div>
   </div>
 
 <script>
-// 移动端标签页管理
-// ==================== 移动端弹窗管理 ====================
-function showSessionsModal() {
-  document.getElementById('sessionsModal').classList.remove('hidden');
-  document.getElementById('sessionsModal').classList.add('flex');
-  // 复制会话列表到弹窗
-  const sessionList = document.getElementById('sessionList').cloneNode(true);
-  const modalList = document.getElementById('sessionListModal');
-  modalList.innerHTML = '';
-  modalList.appendChild(sessionList);
-  // 移除ID避免冲突
-  modalList.querySelector('#sessionList').removeAttribute('id');
-
-  // 绑定弹窗内会话点击与删除事件（克隆节点无事件）
-  modalList.onclick = async (e) => {
-    const deleteBtn = e.target.closest('.btn-delete');
-    if(deleteBtn){
-      e.stopPropagation();
-      const sessionId = deleteBtn.dataset.sessionId;
-      if(!sessionId) return;
-      const session = SESSIONS.find(s => String(s.id) === String(sessionId));
-      const title = session?.title || '无标题';
-      if(confirm(`确定删除会话 "${title}" 吗？`)){
-        await deleteSession(sessionId);
-        // 删除后刷新弹窗列表
-        showSessionsModal();
-      }
-      return;
-    }
-
-    const item = e.target.closest('.session-item');
-    if(item){
-      const sessionId = item.dataset.sessionId;
-      if(sessionId){
-        await switchSession(sessionId);
-      }
-    }
-  };
-}
-
-function closeSessionsModal() {
-  const modal = document.getElementById('sessionsModal');
-  if(modal){
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
-}
-
-function showQuizModal() {
-  document.getElementById('quizModal').classList.remove('hidden');
-  document.getElementById('quizModal').classList.add('flex');
-  // 复制练习题到弹窗
-  const quizBox = document.getElementById('quizBox').cloneNode(true);
-  const modalBox = document.getElementById('quizBoxModal');
-  modalBox.innerHTML = '';
-  modalBox.appendChild(quizBox);
-  // 移除ID避免冲突
-  modalBox.querySelector('#quizBox').removeAttribute('id');
-  // 同步难度选择
-  document.getElementById('quizDifficultyModal').value = document.getElementById('quizDifficulty').value;
-
-  // 绑定弹窗内的按钮事件（克隆节点不会保留事件）
-  modalBox.onclick = (e) => {
-    const btn = e.target.closest('button[data-quiz-action]');
-    if(!btn) return;
-    const action = btn.dataset.quizAction;
-    const index = Number(btn.dataset.quizIndex);
-    if(Number.isNaN(index)) return;
-    if(action === 'submit') {
-      submitQuizAnswer(index, modalBox);
-    } else if(action === 'add-wrong') {
-      addToWrongbook(index);
-    }
-  };
-
-  // 为弹窗内已存在的解析按钮重新绑定事件
-  bindExplainToggles(modalBox);
-}
-
-function closeQuizModal() {
-  const modal = document.getElementById('quizModal');
-  if(modal){
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
-}
-
-let MOBILE_TABS = null;
-
-
 let TOKEN = localStorage.getItem("token") || "";
 let USER = JSON.parse(localStorage.getItem("user") || "null");
 let SESSION_ID = localStorage.getItem("session_id") || "";
@@ -511,6 +315,8 @@ let ES = null;
 let QUIZ_LOADING = false; // 习题生成中的标记
 let PENDING_EXERCISE = false; // 是否等待新习题
 let LAST_EXERCISE_COUNT = 0; // 上次记录的习题数量
+let GENERATING_EXERCISE = false; // 是否正在生成题目
+let EXERCISED_INDICES = []; // 已生成题目的消息索引
 
 // ==================== 响应式布局管理 ====================
 class LayoutManager {
@@ -741,7 +547,7 @@ function showQuizLoading() {
   loadingDiv.className = "quiz-loading-card";
   loadingDiv.innerHTML = `
     <div class="quiz-spinner animate-spin"></div>
-    <div class="text-sm text-gray-500">模型生成中</div>
+    <div class="text-sm text-gray-500">题目生成中</div>
   `;
   // 去掉空提示，避免与加载提示并存
   const emptyMsg = box.querySelector('.text-gray-400');
@@ -806,7 +612,6 @@ async function loadSessions(){
     SESSIONS.forEach(s => {
       const itemWrapper = document.createElement("div");
       itemWrapper.className = "relative group";
-      itemWrapper.dataset.sessionId = s.id;
       
       const item = document.createElement("div");
       item.className = `p-3 rounded-lg cursor-pointer border transition-all ${
@@ -814,8 +619,6 @@ async function loadSessions(){
           ? "bg-orange-100 border-orange-400 font-medium" 
           : "bg-white border-gray-200 hover:border-orange-300"
       }`;
-      item.classList.add("session-item");
-      item.dataset.sessionId = s.id;
       
       const titleDiv = document.createElement("div");
       titleDiv.className = "text-sm truncate";
@@ -835,9 +638,8 @@ async function loadSessions(){
       };
       
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "btn-delete absolute top-1 right-2 text-gray-400 hover:text-red-500 text-lg md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto";
+      deleteBtn.className = "btn-delete absolute top-1 right-2 hidden group-hover:block text-gray-400 hover:text-red-500 text-lg";
       deleteBtn.innerText = "✕";
-      deleteBtn.dataset.sessionId = s.id;
       deleteBtn.onclick = async (e) => {
         e.stopPropagation();
         if(confirm(`确定删除会话 "${s.title || '无标题'}" 吗？`)){
@@ -860,17 +662,7 @@ async function deleteSession(sessionId){
     if(SESSION_ID === sessionId){
       SESSION_ID = "";
       localStorage.removeItem("session_id");
-      await loadSessions();
-      if(SESSIONS.length > 0){
-        await switchSession(SESSIONS[0].id);
-      }else{
-        document.getElementById("chatArea").innerHTML = "";
-        document.getElementById("sources").innerHTML = "";
-        const quizBox = document.getElementById("quizBox");
-        if(quizBox){
-          quizBox.innerHTML = '<div class="text-center text-gray-400">暂无练习题（先提问生成）</div>';
-        }
-      }
+      await createNewSession();
     }else{
       await loadSessions();
     }
@@ -886,8 +678,6 @@ async function switchSession(sessionId){
   await loadSessions();
   await loadHistory();
   await loadQuiz();
-  // 关闭会话弹窗（如果打开）
-  closeSessionsModal();
 }
 
 async function createNewSession(){
@@ -898,8 +688,6 @@ async function createNewSession(){
     await loadSessions();
     await loadHistory();
     await loadQuiz();
-    // 关闭会话弹窗（如果打开）
-    closeSessionsModal();
   }catch(e){
     alert("创建会话失败: " + e.message);
   }
@@ -911,8 +699,28 @@ async function loadHistory(){
     const session = await api(`/api/sessions/${SESSION_ID}`);
     const area = document.getElementById("chatArea");
     area.innerHTML = "";
-    session.messages.forEach(m => {
-      addMessage(area, m.role, m.content, m.timestamp, m.sources);
+
+    // 解析已生成题目的消息索引
+    try{
+      const meta = JSON.parse(session.meta || "{}");
+      EXERCISED_INDICES = meta.exercised_message_indices || [];
+    }catch(e){
+      EXERCISED_INDICES = [];
+    }
+
+    // 为每条助手消息找到其对应的用户消息索引
+    session.messages.forEach((m, idx) => {
+      let userMsgIndex = null;
+      if(m.role === "assistant"){
+        // 找到前一条用户消息的索引
+        for(let i = idx - 1; i >= 0; i--){
+          if(session.messages[i].role === "user"){
+            userMsgIndex = i;
+            break;
+          }
+        }
+      }
+      addMessage(area, m.role, m.content, m.timestamp, m.sources, userMsgIndex);
     });
     area.scrollTop = 1e9;
   }catch(e){
@@ -920,7 +728,7 @@ async function loadHistory(){
   }
 }
 
-function addMessage(container, role, content, timestamp, sources){
+function addMessage(container, role, content, timestamp, sources, messageIndex){
   const msgDiv = document.createElement("div");
   msgDiv.className = `message-item message-${role}`;
   
@@ -991,6 +799,23 @@ function addMessage(container, role, content, timestamp, sources){
       "</ul>";
     msgDiv.appendChild(sourcesDiv);
   }
+
+  // 助手回复后添加"生成一道题"按钮（messageIndex 为对应的用户消息索引）
+  if(role === "assistant" && messageIndex !== undefined && messageIndex !== null){
+    const genBtnDiv = document.createElement("div");
+    genBtnDiv.className = "mt-2";
+    const alreadyGenerated = EXERCISED_INDICES.includes(messageIndex);
+    const genBtn = document.createElement("button");
+    genBtn.className = "gen-exercise-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors " + 
+      (alreadyGenerated ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-orange-100 text-orange-700 hover:bg-orange-200");
+    genBtn.innerText = alreadyGenerated ? "✅ 已生成题目" : "📝 生成一道题";
+    genBtn.dataset.messageIndex = messageIndex;
+    if(!alreadyGenerated){
+      genBtn.onclick = () => generateExerciseForMessage(messageIndex, genBtn);
+    }
+    genBtnDiv.appendChild(genBtn);
+    msgDiv.appendChild(genBtnDiv);
+  }
   
   container.appendChild(msgDiv);
   container.scrollTop = 1e9;
@@ -1005,7 +830,7 @@ async function loadQuiz(){
     const box = document.getElementById("quizBox");
     
     if(exercises.length === 0){
-      box.innerHTML = '<div class="text-center text-gray-400">暂无练习题（先提问生成）</div>';
+      box.innerHTML = '<div class="text-center text-gray-400">暂无练习题（回答后点击"生成一道题"）</div>';
       document.getElementById("btnClearAnswers").classList.add("hidden");
       LAST_EXERCISE_COUNT = 0;
       return;
@@ -1099,15 +924,11 @@ async function loadQuiz(){
       submitBtn.className = "flex-1 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm hover:bg-orange-600";
       submitBtn.innerText = "提交";
       submitBtn.onclick = () => submitQuizAnswer(index);
-      submitBtn.dataset.quizAction = "submit";
-      submitBtn.dataset.quizIndex = index;
       
       const addWrongBtn = document.createElement("button");
       addWrongBtn.className = "px-3 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600";
       addWrongBtn.innerText = "添加到错题本";
       addWrongBtn.onclick = () => addToWrongbook(index);
-      addWrongBtn.dataset.quizAction = "add-wrong";
-      addWrongBtn.dataset.quizIndex = index;
       
       const resultDiv = document.createElement("div");
       resultDiv.id = `quiz-result-${index}`;
@@ -1126,19 +947,19 @@ async function loadQuiz(){
         
         // 延迟一帧后重新绑定事件，确保 DOM 已更新
         requestAnimationFrame(() => {
-          const toggleBtn = resultDiv.querySelector('[data-explain-toggle]');
+          const toggleBtn = resultDiv.querySelector('button');
           const explainContent = resultDiv.querySelector('.border-l-2');
           
           if(toggleBtn && explainContent){
             // 为按钮创建新的事件监听器（不使用 onclick 属性）
             toggleBtn.replaceWith(toggleBtn.cloneNode(true));
-            const newToggleBtn = resultDiv.querySelector('[data-explain-toggle]');
+            const newToggleBtn = resultDiv.querySelector('button');
             
             if(newToggleBtn){
               newToggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const content = resultDiv.querySelector('.border-l-2');
-                const btn = resultDiv.querySelector('[data-explain-toggle]');
+                const btn = resultDiv.querySelector('button');
                 if(!content || !btn) return;
                 
                 const isHidden = content.classList.contains("hidden");
@@ -1169,31 +990,8 @@ async function loadQuiz(){
   }
 }
 
-function bindExplainToggles(scope){
-  const container = scope || document;
-  container.querySelectorAll('[data-explain-toggle]').forEach(btn => {
-    if(btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', function(e){
-      e.preventDefault();
-      const resultRoot = btn.closest('[id^="quiz-result-"]') || btn.parentElement;
-      const content = resultRoot ? resultRoot.querySelector('.border-l-2') : null;
-      if(!content) return;
-      const isHidden = content.classList.contains("hidden");
-      if(isHidden){
-        content.classList.remove("hidden");
-        btn.innerText = "📖 收起解析";
-      }else{
-        content.classList.add("hidden");
-        btn.innerText = "📖 展开解析";
-      }
-    });
-  });
-}
-
-async function submitQuizAnswer(quizIndex, scope){
-  const root = scope || document;
-  const selected = root.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
+async function submitQuizAnswer(quizIndex){
+  const selected = document.querySelector(`input[name="quiz-${quizIndex}"]:checked`);
   if(!selected){
     alert("请选择答案");
     return;
@@ -1207,8 +1005,7 @@ async function submitQuizAnswer(quizIndex, scope){
     return;
   }
   
-  const resultDiv = root.querySelector(`#quiz-result-${quizIndex}`);
-  if(!resultDiv) return;
+  const resultDiv = document.getElementById(`quiz-result-${quizIndex}`);
   const isCorrect = userAnswer === exercise.correct_answer;
   
   // 创建结果容器
@@ -1232,7 +1029,6 @@ async function submitQuizAnswer(quizIndex, scope){
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "w-full text-left p-2 rounded bg-blue-50 hover:bg-blue-100 text-sm font-medium text-blue-700 transition-colors";
   toggleBtn.innerText = "📖 展开解析";
-  toggleBtn.dataset.explainToggle = "1";
   
   const explainContent = document.createElement("div");
   explainContent.className = "hidden mt-2 p-2 rounded bg-blue-50 text-sm border-l-2 border-blue-300";
@@ -1306,10 +1102,6 @@ async function loginOrRegister(kind){
     await loadSessions();
     await loadHistory();
     await loadQuiz();
-    
-    // 确保所有弹窗都关闭，让用户看到主对话界面
-    closeSessionsModal();
-    closeQuizModal();
   }catch(e){
     document.getElementById("authErr").innerText = e.message;
   }
@@ -1397,9 +1189,6 @@ function startStream(question){
       ES.close();
       return;
     }
-    if(msg.type === "exercise"){
-      return;
-    }
     if(msg.type === "done"){
       ES.close();
       document.getElementById("current-message").id = "";
@@ -1436,10 +1225,11 @@ const sendQuestion = async ()=>{
     alert("请先登录");
     return;
   }
+  if(GENERATING_EXERCISE){
+    alert("正在生成题目，请稍候完成后再提问");
+    return;
+  }
   document.getElementById("q").value="";
-  // 记录当前习题数量并显示加载动画
-  LAST_EXERCISE_COUNT = EXERCISES.length;
-  showQuizLoading();
   
   // 获取当前会话的消息数
   try{
@@ -1490,7 +1280,6 @@ textarea.addEventListener("input", () => {
 // 初始化输入框高度
 autoResizeTextarea(textarea);
 
-// 弹窗按钮事件
 document.getElementById("btnWrongbook").onclick = async ()=>{
   try{
     document.getElementById("wrongModal").classList.remove("hidden");
@@ -1506,35 +1295,6 @@ document.getElementById("btnCloseWrong").onclick = ()=>{
   document.getElementById("wrongModal").classList.remove("flex");
 };
 
-document.getElementById("btnShowSessions").onclick = ()=>{
-  showSessionsModal();
-};
-
-document.getElementById("btnCloseSessions").onclick = ()=>{
-  closeSessionsModal();
-};
-
-document.getElementById("btnNewSessionModal").onclick = async ()=>{
-  closeSessionsModal();
-  // 调用原来的新建会话函数
-  document.getElementById("btnNewSession").click();
-};
-
-document.getElementById("btnShowQuiz").onclick = ()=>{
-  showQuizModal();
-};
-
-document.getElementById("btnCloseQuiz").onclick = ()=>{
-  closeQuizModal();
-};
-
-// 同步难度选择
-document.getElementById("quizDifficultyModal").onchange = (e)=>{
-  document.getElementById("quizDifficulty").value = e.target.value;
-  document.getElementById("quizDifficulty").dispatchEvent(new Event('change'));
-};
-
-
 document.getElementById("btnLogout").onclick = ()=>{
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -1544,10 +1304,6 @@ document.getElementById("btnLogout").onclick = ()=>{
 };
 
 (async function init(){
-  // 立即关闭所有弹窗，确保手机端显示主对话界面
-  closeSessionsModal();
-  closeQuizModal();
-  
   // 初始化响应式布局
   layoutManager = new LayoutManager();
   
@@ -1572,10 +1328,6 @@ document.getElementById("btnLogout").onclick = ()=>{
       
       await loadHistory();
       await loadQuiz();
-      
-      // 确保所有弹窗都关闭，让用户看到主对话界面
-      closeSessionsModal();
-      closeQuizModal();
     }catch(e){
       showAuth(true);
     }
@@ -1754,386 +1506,91 @@ async function addToWrongbook(quizIndex){
   }
 }
 
-// 知识库管理modal相关函数
-function showKnowledgeBaseModal() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('请先登录');
+// ==================== 生成一道题 ====================
+async function generateExerciseForMessage(messageIndex, btnEl){
+  // 检查是否已生成
+  if(EXERCISED_INDICES.includes(messageIndex)){
+    alert("您已经生成过题目了");
     return;
   }
-  document.getElementById('knowledgeBaseModal').classList.remove('hidden');
-  loadPdfList();
+  // 检查是否正在生成
+  if(GENERATING_EXERCISE){
+    alert("正在生成题目，请稍候...");
+    return;
+  }
+
+  GENERATING_EXERCISE = true;
   
-  // 重新绑定上传表单事件
-  const uploadForm = document.getElementById('uploadForm');
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', handleUploadSubmit);
-  }
+  // 禁用提问输入和发送按钮
+  const qInput = document.getElementById("q");
+  const askBtn = document.getElementById("btnAsk");
+  qInput.disabled = true;
+  askBtn.disabled = true;
+  askBtn.classList.add("opacity-50", "cursor-not-allowed");
   
-  // 绑定文件选择事件
-  const pdfFileInput = document.getElementById('pdfFile');
-  if (pdfFileInput) {
-    pdfFileInput.addEventListener('change', validateFileSize);
-  }
-}
+  // 禁用所有生成题目按钮
+  document.querySelectorAll(".gen-exercise-btn").forEach(b => {
+    b.disabled = true;
+    b.classList.add("opacity-50", "cursor-not-allowed");
+  });
 
-function hideKnowledgeBaseModal() {
-  document.getElementById('knowledgeBaseModal').classList.add('hidden');
-}
+  // 更新当前按钮状态
+  btnEl.innerText = "⏳ 题目生成中...";
 
-// 点击modal背景关闭modal
-document.addEventListener('DOMContentLoaded', function() {
-  // 确保所有弹窗在页面加载时关闭
-  closeSessionsModal();
-  closeQuizModal();
-  
-  const modal = document.getElementById('knowledgeBaseModal');
-  if (modal) {
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        hideKnowledgeBaseModal();
-      }
-    });
-  }
-});
+  // 显示右侧习题区加载动画
+  showQuizLoading();
 
-// 上传PDF表单提交处理函数
-async function handleUploadSubmit(e) {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const token = localStorage.getItem('token');
-  if (!token) {
-    const uploadMessage = document.getElementById('uploadMessage');
-    if (uploadMessage) {
-      uploadMessage.textContent = '请先登录';
-      uploadMessage.className = 'mt-4 text-red-500';
-    }
-    return;
-  }
-
-  const fileInput = document.getElementById('pdfFile');
-  const file = fileInput.files[0];
-  
-  // 检查文件大小 (200MB = 200 * 1024 * 1024 bytes)
-  const maxSize = 200 * 1024 * 1024;
-  if (file.size > maxSize) {
-    const uploadMessage = document.getElementById('uploadMessage');
-    if (uploadMessage) {
-      uploadMessage.textContent = `文件过大！最大支持200MB，当前文件大小：${(file.size / 1024 / 1024).toFixed(2)}MB`;
-      uploadMessage.className = 'mt-4 text-red-500';
-    }
-    return;
-  }
-
-  const uploadMessage = document.getElementById('uploadMessage');
-  const uploadProgress = document.getElementById('uploadProgress');
-  const progressBar = document.getElementById('progressBar');
-  const progressText = document.getElementById('progressText');
-  const uploadButton = document.getElementById('uploadButton');
-
-  if (uploadMessage) {
-    uploadMessage.textContent = '准备上传...';
-    uploadMessage.className = 'mt-4 text-blue-500';
-  }
-
-  // 显示进度条
-  if (uploadProgress) {
-    uploadProgress.classList.remove('hidden');
-  }
-
-  // 禁用上传按钮
-  if (uploadButton) {
-    uploadButton.disabled = true;
-    uploadButton.textContent = '上传中...';
-  }
-
-  try {
-    formData.append('token', token);
+  try{
+    const difficulty = document.getElementById("quizDifficulty").value;
+    const res = await api(`/api/sessions/${SESSION_ID}/generate_exercise?message_index=${messageIndex}&difficulty=${difficulty}`, "POST");
     
-    const xhr = new XMLHttpRequest();
+    if(res.already_generated){
+      alert("您已经生成过题目了");
+      btnEl.innerText = "✅ 已生成题目";
+      btnEl.classList.remove("bg-orange-100", "text-orange-700", "hover:bg-orange-200");
+      btnEl.classList.add("bg-gray-200", "text-gray-500", "cursor-not-allowed");
+      btnEl.onclick = null;
+      EXERCISED_INDICES.push(messageIndex);
+      return;
+    }
+
+    if(res.ok){
+      EXERCISED_INDICES.push(messageIndex);
+      btnEl.innerText = "✅ 已生成题目";
+      btnEl.classList.remove("bg-orange-100", "text-orange-700", "hover:bg-orange-200");
+      btnEl.classList.add("bg-gray-200", "text-gray-500", "cursor-not-allowed");
+      btnEl.onclick = null;
+      
+      // 重新加载习题
+      await loadQuiz();
+    }
+  }catch(e){
+    alert("题目生成失败: " + e.message);
+    btnEl.innerText = "📝 生成一道题";
+  }finally{
+    GENERATING_EXERCISE = false;
     
-    // 上传进度事件
-    xhr.upload.addEventListener('progress', function(e) {
-      if (e.lengthComputable) {
-        const percentComplete = (e.loaded / e.total) * 100;
-        if (progressBar) {
-          progressBar.style.width = percentComplete + '%';
-        }
-        if (progressText) {
-          progressText.textContent = `上传进度：${percentComplete.toFixed(1)}%`;
-        }
+    // 恢复提问输入和发送按钮
+    qInput.disabled = false;
+    askBtn.disabled = false;
+    askBtn.classList.remove("opacity-50", "cursor-not-allowed");
+    
+    // 恢复所有生成题目按钮（除了已生成的）
+    document.querySelectorAll(".gen-exercise-btn").forEach(b => {
+      const idx = parseInt(b.dataset.messageIndex);
+      if(!EXERCISED_INDICES.includes(idx)){
+        b.disabled = false;
+        b.classList.remove("opacity-50", "cursor-not-allowed");
       }
     });
 
-    // 上传完成事件
-    xhr.addEventListener('load', function() {
-      if (xhr.status === 200) {
-        try {
-          const result = JSON.parse(xhr.responseText);
-          if (uploadMessage) {
-            uploadMessage.textContent = result.message;
-            uploadMessage.className = 'mt-4 text-green-500';
-          }
-          e.target.reset();
-          loadPdfList(); // 重新加载列表
-        } catch (parseError) {
-          if (uploadMessage) {
-            uploadMessage.textContent = '响应解析失败';
-            uploadMessage.className = 'mt-4 text-red-500';
-          }
-        }
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          if (uploadMessage) {
-            uploadMessage.textContent = error.detail || '上传失败';
-            uploadMessage.className = 'mt-4 text-red-500';
-          }
-        } catch (parseError) {
-          if (uploadMessage) {
-            uploadMessage.textContent = `上传失败 (${xhr.status})`;
-            uploadMessage.className = 'mt-4 text-red-500';
-          }
-        }
-      }
-      
-      // 隐藏进度条
-      if (uploadProgress) {
-        uploadProgress.classList.add('hidden');
-      }
-      
-      // 重置进度条
-      if (progressBar) {
-        progressBar.style.width = '0%';
-      }
-      if (progressText) {
-        progressText.textContent = '上传进度：0%';
-      }
-      
-      // 重新启用上传按钮
-      if (uploadButton) {
-        uploadButton.disabled = false;
-        uploadButton.textContent = '上传PDF';
-      }
-    });
-
-    // 上传错误事件
-    xhr.addEventListener('error', function() {
-      if (uploadMessage) {
-        uploadMessage.textContent = '网络错误，请检查网络连接';
-        uploadMessage.className = 'mt-4 text-red-500';
-      }
-      
-      // 隐藏进度条
-      if (uploadProgress) {
-        uploadProgress.classList.add('hidden');
-      }
-      
-      // 重置进度条
-      if (progressBar) {
-        progressBar.style.width = '0%';
-      }
-      if (progressText) {
-        progressText.textContent = '上传进度：0%';
-      }
-      
-      // 重新启用上传按钮
-      if (uploadButton) {
-        uploadButton.disabled = false;
-        uploadButton.textContent = '上传PDF';
-      }
-    });
-
-    // 发送请求
-    xhr.open('POST', '/api/upload-pdf');
-    xhr.send(formData);
-
-  } catch (error) {
-    if (uploadMessage) {
-      uploadMessage.textContent = '初始化上传失败';
-      uploadMessage.className = 'mt-4 text-red-500';
-    }
-    
-    // 隐藏进度条
-    if (uploadProgress) {
-      uploadProgress.classList.add('hidden');
-    }
-    
-    // 重置进度条
-    if (progressBar) {
-      progressBar.style.width = '0%';
-    }
-    if (progressText) {
-      progressText.textContent = '上传进度：0%';
-    }
-    
-    // 重新启用上传按钮
-    if (uploadButton) {
-      uploadButton.disabled = false;
-      uploadButton.textContent = '上传PDF';
-    }
-  }
-}
-
-// 文件选择验证
-function validateFileSize() {
-  const fileInput = document.getElementById('pdfFile');
-  const file = fileInput.files[0];
-  const uploadMessage = document.getElementById('uploadMessage');
-  
-  if (file) {
-    const maxSize = 200 * 1024 * 1024; // 200MB
-    if (file.size > maxSize) {
-      if (uploadMessage) {
-        uploadMessage.textContent = `文件过大！最大支持200MB，当前文件大小：${(file.size / 1024 / 1024).toFixed(2)}MB`;
-        uploadMessage.className = 'mt-4 text-red-500';
-      }
-      fileInput.value = ''; // 清空文件选择
-    } else {
-      if (uploadMessage) {
-        uploadMessage.textContent = `已选择文件：${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
-        uploadMessage.className = 'mt-4 text-green-500';
-      }
-    }
-  }
-}
-
-// 加载现有PDF列表
-async function loadPdfList() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    const pdfList = document.getElementById('pdfList');
-    if (pdfList) {
-      pdfList.innerHTML = '<p class="text-gray-500">请先登录</p>';
-    }
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/pdfs?token=${encodeURIComponent(token)}`, {
-      method: 'GET'
-    });
-
-    if (response.ok) {
-      const pdfs = await response.json();
-      displayPdfs(pdfs);
-    } else {
-      const pdfList = document.getElementById('pdfList');
-      if (pdfList) {
-        pdfList.innerHTML = '<p class="text-red-500">加载PDF列表失败</p>';
-      }
-    }
-  } catch (error) {
-    const pdfList = document.getElementById('pdfList');
-    if (pdfList) {
-      pdfList.innerHTML = '<p class="text-red-500">网络错误</p>';
-    }
-  }
-}
-
-// 显示PDF列表
-function displayPdfs(pdfs) {
-  const pdfList = document.getElementById('pdfList');
-  if (!pdfList) return;
-
-  if (!pdfs || pdfs.length === 0) {
-    pdfList.innerHTML = '<p class="text-gray-500">暂无PDF文件</p>';
-    return;
-  }
-
-  pdfList.innerHTML = pdfs.map(pdf => {
-    const isGlobal = pdf.source === 'global';
-    const bgColor = isGlobal ? 'bg-blue-50' : 'bg-gray-50';
-    const sourceText = isGlobal ? '系统' : '个人';
-    const sourceColor = isGlobal ? 'text-blue-600' : 'text-gray-600';
-    const deleteButton = isGlobal ? '' : `<button onclick="deletePdf('${pdf.name}')" class="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600">删除</button>`;
-    
-    return `
-      <div class="flex items-center justify-between p-3 ${bgColor} rounded-lg">
-        <div class="flex-1">
-          <div class="font-medium">${pdf.name}</div>
-          <div class="text-sm text-gray-500">上传时间：${new Date(pdf.upload_time).toLocaleString()}</div>
-          <div class="text-xs ${sourceColor} mt-1">来源：${sourceText}</div>
-        </div>
-        ${deleteButton}
-      </div>
-    `;
-  }).join('');
-}
-
-// 删除PDF
-async function deletePdf(filename) {
-  if (!confirm(`确定要删除 "${filename}" 吗？`)) {
-    return;
-  }
-
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('请先登录');
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/pdfs/${encodeURIComponent(filename)}?token=${encodeURIComponent(token)}`, {
-      method: 'DELETE'
-    });
-
-    if (response.ok) {
-      alert('PDF删除成功');
-      loadPdfList(); // 重新加载列表
-    } else {
-      const error = await response.json();
-      alert(`删除失败: ${error.detail || '未知错误'}`);
-    }
-  } catch (error) {
-    alert('网络错误，请重试');
+    // 移除加载动画
+    const loadingPlaceholder = document.getElementById("quiz-loading-placeholder");
+    if(loadingPlaceholder) loadingPlaceholder.remove();
+    QUIZ_LOADING = false;
+    PENDING_EXERCISE = false;
   }
 }
 </script>
-
-<!-- 知识库管理Modal -->
-<div id="knowledgeBaseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-end sm:items-center sm:justify-center p-2 sm:p-4 z-50">
-  <div class="bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-    <!-- Modal Header -->
-    <div class="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0">
-      <h2 class="text-lg sm:text-2xl font-bold">知识库管理</h2>
-      <button onclick="hideKnowledgeBaseModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
-    </div>
-
-    <!-- Modal Body -->
-    <div class="p-4 sm:p-6 overflow-y-auto flex-1">
-      <!-- 上传新PDF -->
-      <div class="bg-gray-50 p-4 sm:p-6 rounded-lg mb-4 sm:mb-6">
-        <h3 class="text-base sm:text-xl font-semibold mb-4">上传新PDF</h3>
-        <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
-          <div>
-            <label for="pdfFile" class="block text-xs sm:text-sm font-medium text-gray-700">选择PDF文件</label>
-            <input type="file" id="pdfFile" name="file" accept="application/pdf" class="mt-1 block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" required />
-            <p class="mt-1 text-xs sm:text-sm text-gray-500">支持PDF文件，最大文件大小：200MB</p>
-          </div>
-          
-          <!-- 进度条 -->
-          <div id="uploadProgress" class="hidden">
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-              <div id="progressBar" class="bg-orange-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
-            </div>
-            <p id="progressText" class="text-xs sm:text-sm text-gray-600 mt-1">上传进度：0%</p>
-          </div>
-          
-          <button type="submit" id="uploadButton" class="w-full bg-orange-500 text-white py-2 px-3 rounded-md hover:bg-orange-600 active:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 text-sm sm:text-base">上传PDF</button>
-        </form>
-        <div id="uploadMessage" class="mt-4 text-xs sm:text-sm"></div>
-      </div>
-
-      <!-- 现有PDF列表 -->
-      <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6">
-        <h3 class="text-base sm:text-xl font-semibold mb-4">现有PDF文件</h3>
-        <div id="pdfList" class="space-y-2 text-xs sm:text-sm">
-          <!-- PDF列表将在这里动态加载 -->
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 </body>
 </html>

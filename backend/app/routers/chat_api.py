@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -139,6 +139,7 @@ def get_session_detail(session_id: str, token: str = None, request: Request = No
         "title": session.title,
         "messages": chat_messages,
         "exercises": exercises,
+        "meta": session.meta or "{}",
         "created_at": session.created_at,
         "updated_at": session.updated_at
     }
@@ -218,24 +219,6 @@ async def chat_stream(session_id: str, token: str = None, q: str = "", difficult
         # 保存更新后的聊天记录（保存完整的原始消息）
         session.chat = json.dumps(chat_messages, ensure_ascii=False)
         
-        # 生成练习题（JSON Schema 模式）
-        exercises = []
-        try:
-            exercise_prompt = build_exercise_prompt(q.strip(), contexts, difficulty)
-            exercise_json = client.json_generate(EXERCISE_SYSTEM_PROMPT, exercise_prompt)
-            exercise_data = json.loads(exercise_json)
-            exercises.append(exercise_data)
-            
-            yield f"data: {json.dumps({'type':'exercise','data': exercise_data}, ensure_ascii=False)}\n\n"
-        except Exception as e:
-            # 练习题生成失败不影响主流程，只记录错误
-            yield f"data: {json.dumps({'type':'exercise_error','message': str(e)}, ensure_ascii=False)}\n\n"
-
-        # 保存习题到数据库
-        existing_exercises = json.loads(session.exercises or "[]")
-        existing_exercises.extend(exercises)
-        session.exercises = json.dumps(existing_exercises, ensure_ascii=False)
-        
         db.add(session)
         db.commit()
 
@@ -265,6 +248,100 @@ def delete_session(session_id: str, token: str = None, request: Request = None, 
     db.delete(session)
     db.commit()
     return {"ok": True}
+
+@router.post("/sessions/{session_id}/generate_exercise")
+def generate_exercise(session_id: str, token: str = None, message_index: int = None, request: Request = None, db: Session = Depends(get_db)):
+    """
+    针对指定消息生成一道练习题。
+    每条用户提问只能生成一道题，重复请求返回提示。
+    """
+    import time as _time
+    try:
+        auth_header = request.headers.get("Authorization") if request else None
+        token_str = get_token_from_request(token, auth_header)
+        uid = parse_token(token_str)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    session = db.query(models.Session).filter(
+        models.Session.id == session_id,
+        models.Session.user_id == uid
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    chat_messages = json.loads(session.chat or "[]")
+
+    # 解析 meta，跟踪已生成题目的消息索引
+    try:
+        meta = json.loads(session.meta or "{}")
+    except:
+        meta = {}
+    exercised_indices = meta.get("exercised_message_indices", [])
+
+    # 确定要生成题目的用户消息索引
+    if message_index is not None:
+        if message_index < 0 or message_index >= len(chat_messages):
+            raise HTTPException(status_code=400, detail="消息索引无效")
+        if chat_messages[message_index].get("role") != "user":
+            raise HTTPException(status_code=400, detail="只能针对用户提问生成题目")
+        target_index = message_index
+    else:
+        # 默认取最后一条用户消息
+        target_index = None
+        for i in range(len(chat_messages) - 1, -1, -1):
+            if chat_messages[i].get("role") == "user":
+                target_index = i
+                break
+        if target_index is None:
+            raise HTTPException(status_code=400, detail="没有可用的用户提问")
+
+    # 检查是否已经为该消息生成过题目
+    if target_index in exercised_indices:
+        return {"ok": False, "already_generated": True, "message": "您已经生成过题目了"}
+
+    # 获取用户提问内容
+    question = chat_messages[target_index].get("content", "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="提问内容为空")
+
+    # 获取难度参数
+    difficulty = "medium"
+    if request:
+        from urllib.parse import parse_qs, urlparse
+        query_params = parse_qs(str(request.query_params))
+        difficulty = query_params.get("difficulty", ["medium"])[0]
+
+    # 检索相关文档
+    retriever = get_retriever(uid)
+    contexts = retriever.search(question)
+
+    # 生成练习题
+    client = QwenClient()
+    try:
+        exercise_prompt = build_exercise_prompt(question, contexts, difficulty)
+        exercise_json = client.json_generate(EXERCISE_SYSTEM_PROMPT, exercise_prompt)
+        exercise_data = json.loads(exercise_json)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"题目生成失败: {str(e)}")
+
+    # 保存题目到 exercises
+    existing_exercises = json.loads(session.exercises or "[]")
+    exercise_data["message_index"] = target_index
+    existing_exercises.append(exercise_data)
+    session.exercises = json.dumps(existing_exercises, ensure_ascii=False)
+
+    # 记录已生成题目的消息索引
+    exercised_indices.append(target_index)
+    meta["exercised_message_indices"] = exercised_indices
+    session.meta = json.dumps(meta, ensure_ascii=False)
+
+    db.add(session)
+    db.commit()
+
+    return {"ok": True, "data": exercise_data, "exercise_index": len(existing_exercises) - 1}
+
 @router.post("/sessions/{session_id}/generate_title")
 def generate_title(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
     """自动生成会话标题（基于第一条消息）
@@ -339,131 +416,4 @@ def generate_title(session_id: str, token: str = None, request: Request = None, 
     db.commit()
     
     return {"title": title, "ok": True}
-
-
-@router.websocket("/ws/chat/{session_id}")
-async def websocket_chat(websocket: WebSocket, session_id: str, token: str = None, q: str = "", difficulty: str = "medium"):
-    """
-    WebSocket 流式对话
-    前端连接：ws://baseUrl/api/ws/chat/{session_id}?token=...&q=...&difficulty=...
-    """
-    await websocket.accept()
-    db_session = None
-    
-    try:
-        # 验证 token
-        try:
-            uid = parse_token(token)
-        except ValueError as e:
-            await websocket.send_json({"type": "error", "message": f"认证失败: {str(e)}"})
-            await websocket.close(code=4001)
-            return
-
-        # 需要手动获取数据库连接
-        from ..db import SessionLocal
-        db_session = SessionLocal()
-        
-        # 获取会话
-        session_obj = db_session.query(models.Session).filter(
-            models.Session.id == session_id,
-            models.Session.user_id == uid
-        ).first()
-        
-        if not session_obj:
-            await websocket.send_json({"type": "error", "message": "会话不存在"})
-            await websocket.close(code=4004)
-            return
-
-        if not q.strip():
-            await websocket.send_json({"type": "error", "message": "问题不能为空"})
-            await websocket.close(code=4400)
-            return
-
-        # 加载聊天记录
-        chat_messages = json.loads(session_obj.chat or "[]")
-        
-        # 添加用户问题
-        import time
-        user_message = {
-            "role": "user",
-            "content": q.strip(),
-            "timestamp": int(time.time())
-        }
-        chat_messages.append(user_message)
-
-        # 获取检索器和上下文
-        retriever = get_retriever(uid)
-        contexts = retriever.search(q.strip())
-
-        # 构建提示词
-        user_prompt = build_user_prompt(q.strip(), contexts)
-        client = QwenClient()
-
-        # 发送元数据（知识来源）
-        meta = [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
-        await websocket.send_json({"type": "meta", "sources": meta})
-
-        # 流式生成回复
-        full_text = ""
-        try:
-            async for delta in client.stream_generate(SYSTEM_PROMPT, user_prompt):
-                if delta:
-                    full_text += delta
-                    # 实时发送 delta
-                    await websocket.send_json({"type": "delta", "text": delta})
-        except Exception as e:
-            await websocket.send_json({"type": "error", "message": str(e)})
-            await websocket.close(code=1011)
-            return
-
-        # 保存助手回复
-        assistant_message = {
-            "role": "assistant",
-            "content": full_text,
-            "timestamp": int(time.time()),
-            "sources": [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
-        }
-        chat_messages.append(assistant_message)
-        
-        # 更新会话标题
-        if len(chat_messages) == 2:
-            session_obj.title = q.strip()[:30]
-        
-        # 保存聊天记录
-        session_obj.chat = json.dumps(chat_messages, ensure_ascii=False)
-        
-        # 生成练习题
-        exercises = []
-        try:
-            exercise_prompt = build_exercise_prompt(q.strip(), contexts, difficulty)
-            exercise_json = client.json_generate(EXERCISE_SYSTEM_PROMPT, exercise_prompt)
-            exercise_data = json.loads(exercise_json)
-            exercises.append(exercise_data)
-            
-            await websocket.send_json({"type": "exercise", "data": exercise_data})
-        except Exception as e:
-            await websocket.send_json({"type": "exercise_error", "message": str(e)})
-
-        # 保存习题
-        existing_exercises = json.loads(session_obj.exercises or "[]")
-        existing_exercises.extend(exercises)
-        session_obj.exercises = json.dumps(existing_exercises, ensure_ascii=False)
-        
-        db_session.add(session_obj)
-        db_session.commit()
-
-        # 发送完成标志
-        await websocket.send_json({"type": "done"})
-        
-    except WebSocketDisconnect:
-        print(f"WebSocket 连接断开: {session_id}")
-    except Exception as e:
-        print(f"WebSocket 错误: {str(e)}")
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-        except:
-            pass
-    finally:
-        if db_session:
-            db_session.close()
 

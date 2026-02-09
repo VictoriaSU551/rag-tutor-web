@@ -112,7 +112,41 @@ export const generateTitle = (sessionId) => {
   });
 };
 
+/**
+ * 针对指定消息生成一道练习题
+ * @param {string} sessionId 会话ID
+ * @param {number} messageIndex 用户消息索引
+ * @param {string} difficulty 难度
+ * @returns {Promise}
+ */
+export const generateExercise = (sessionId, messageIndex, difficulty = 'medium') => {
+  const token = wx.getStorageSync('access_token');
+
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: `${baseUrl}/api/sessions/${sessionId}/generate_exercise?message_index=${messageIndex}&difficulty=${difficulty}`,
+      method: 'POST',
+      header: {
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      data: {},
+      success(res) {
+        if (res.statusCode === 200) {
+          resolve(res.data);
+        } else {
+          reject(res.data);
+        }
+      },
+      fail(err) {
+        reject(err);
+      },
+    });
+  });
+};
+
 export default {
   streamChat,
   generateTitle,
+  generateExercise,
 };

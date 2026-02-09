@@ -2,7 +2,7 @@
 
 [English](README.md) ｜ **简体中文**
 
-基于检索增强生成（RAG）技术的智能辅导系统，支持混合检索。
+智能辅导系统，用于互动学习与练习。
 
 ## 架构说明
 
@@ -19,9 +19,6 @@ rag-tutor-web/
 │   │   ├── schemas.py           # Pydantic 模式
 │   │   ├── auth.py              # JWT 认证
 │   │   ├── rag/
-│   │   │   ├── retriever.py     # 混合检索引擎
-│   │   │   ├── embeddings_dashscope.py
-│   │   │   ├── ingest.py        # 文档处理
 │   │   │   ├── prompts.py       # LLM 提示模板
 │   │   │   └── qwen_client.py   # 千文 API 客户端
 │   │   └── routers/
@@ -29,8 +26,6 @@ rag-tutor-web/
 │   │       ├── quiz_api.py      # 测验生成
 │   │       ├── user_api.py      # 用户管理
 │   │       └── auth_api.py      # 认证接口
-│   ├── scripts/
-│   │   └── build_index.py       # 索引构建器
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -92,19 +87,6 @@ chmod +x start.sh stop.sh
 
 首次启动将构建 Docker 镜像（需 3-5 分钟）。
 
-4. **构建 RAG 索引**
-
-```bash
-# 上传 PDF 文件
-docker-compose cp /path/to/document.pdf backend:/app/data/pdfs/
-
-# 构建向量索引
-docker-compose exec backend python scripts/build_index.py
-
-# 验证索引
-docker-compose exec backend ls -lh /app/data/index/
-```
-
 ### 访问地址
 
 - 前端：`http://<ip-address>:8002`
@@ -136,12 +118,7 @@ git pull
 
 ```
 backend_data (/app/data/)
-├── app.db              # SQLite 数据库
-├── pdfs/               # PDF 文档
-└── index/              # RAG 索引文件
-    ├── faiss.index     # FAISS 向量索引
-    ├── meta.jsonl      # 文本元数据
-    └── bm25.json       # BM25 倒排索引
+└── app.db              # SQLite 数据库
 ```
 
 ## 环境变量配置
@@ -169,8 +146,4 @@ backend_data (/app/data/)
 | `OPENAI_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI API 基础 URL |
 | `DATABASE_URL` | `sqlite:////app/data/app.db` | 数据库连接字符串 |
 | `DATA_DIR` | `/app/data` | 数据目录路径 |
-| `PDF_DIR` | `/app/data/pdfs` | PDF 文件存储路径 |
-| `INDEX_DIR` | `/app/data/index` | 索引文件存储路径 |
-| `TOP_K` | `6` | 检索返回的文档数量 |
-| `CHUNK_SIZE` | `700` | 文档分块大小（字符数）|
-| `CHUNK_OVERLAP` | `120` | 分块重叠大小（字符数）|
+| `DATA_DIR` | `/app/data` | 数据目录路径 |

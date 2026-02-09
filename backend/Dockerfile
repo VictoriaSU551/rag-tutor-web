@@ -25,8 +25,7 @@ COPY . .
 
 # 创建数据目录结构（对应 Docker volume 挂载点）
 # 注：容器启动后会通过 app/main.py 再次确保目录存在
-RUN mkdir -p /app/data/pdfs \
-    && mkdir -p /app/data/index \
+RUN mkdir -p /app/data \
     && chmod -R 755 /app/data
 
 # 暴露端口

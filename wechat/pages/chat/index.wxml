@@ -38,11 +38,20 @@
               <decode wx:if="{{ item.contentNodes }}" nodes="{{ item.contentNodes }}" />
               <text wx:else class="streaming-text">{{ item.content }}</text>
               
-              <!-- 知识来源 Markdown 格式 -->
-              <view wx:if="{{ item.sourcesNodes }}" class="sources-embedded">
-                <decode nodes="{{ item.sourcesNodes }}" />
-              </view>
             </view>
+          </view>
+          <!-- 生成一道题按钮 -->
+          <view wx:if="{{ item.userMsgIndex !== null && item.userMsgIndex !== undefined }}" class="gen-exercise-wrap">
+            <button 
+              wx:if="{{ !utils.includes(exercisedIndices, item.userMsgIndex) }}" 
+              class="gen-exercise-btn" 
+              data-msg-index="{{ item.userMsgIndex }}" 
+              bind:tap="handleGenerateExercise"
+              disabled="{{ generatingExercise }}"
+            >
+              {{ generatingExercise ? '☣ 题目生成中...' : '📝 生成一道题' }}
+            </button>
+            <view wx:else class="gen-exercise-done">✅ 已生成题目</view>
           </view>
         </view>
       </block>
@@ -69,7 +78,7 @@
       bindconfirm="sendMessage"
     />
   </view>
-  <view class="send-btn" bind:tap="sendMessage" disabled="{{ !input }}">
+  <view class="send-btn" bind:tap="sendMessage" disabled="{{ !input || generatingExercise }}">
     <image src="/static/icon/send.svg" class="send-icon" />
   </view>
 </view>

@@ -58,6 +58,52 @@
     const uploadForm = document.getElementById('uploadForm');
     const uploadMessage = document.getElementById('uploadMessage');
     const pdfList = document.getElementById('pdfList');
+    let API_BASE = localStorage.getItem('api_base') || 'http://localhost:8002';
+
+    function buildApiUrl(path, base = API_BASE) {
+      const prefix = base ? base.replace(/\/$/, '') : '';
+      return `${prefix}${path}`;
+    }
+
+    function guessFallbackBase() {
+      if (API_BASE) return '';
+      if (window.location.protocol !== 'http:') return '';
+      const host = window.location.hostname;
+      if (!host) return '';
+      if (window.location.port === '8000') return '';
+      return `http://${host}:8000`;
+    }
+
+    async function parseJsonResponse(res) {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json().catch(() => ({}));
+        return { isJson: true, data };
+      }
+      const text = await res.text();
+      return { isJson: false, data: {}, text };
+    }
+
+    async function fetchJsonWithFallback(path, options) {
+      let res = await fetch(buildApiUrl(path), options);
+      let parsed = await parseJsonResponse(res);
+
+      if ((!parsed.isJson || res.status >= 500) && !API_BASE) {
+        const fallbackBase = guessFallbackBase();
+        if (fallbackBase) {
+          const retryRes = await fetch(buildApiUrl(path, fallbackBase), options);
+          const retryParsed = await parseJsonResponse(retryRes);
+          res = retryRes;
+          parsed = retryParsed;
+          if (retryParsed.isJson) {
+            API_BASE = fallbackBase;
+            localStorage.setItem('api_base', API_BASE);
+          }
+        }
+      }
+
+      return { res, parsed };
+    }
 
     // 加载现有PDF列表
     async function loadPdfList() {
@@ -68,15 +114,16 @@
       }
 
       try {
-        const response = await fetch('/api/pdfs', {
+        const { res, parsed } = await fetchJsonWithFallback('/api/pdfs', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (response.ok) {
-          const pdfs = await response.json();
-          displayPdfs(pdfs);
+        if (res.ok && parsed.isJson) {
+          displayPdfs(parsed.data);
+        } else if (!parsed.isJson) {
+          pdfList.innerHTML = '<p class="text-red-500">接口返回非 JSON，请检查后端/代理配置</p>';
         } else {
           pdfList.innerHTML = '<p class="text-red-500">加载PDF列表失败</p>';
         }
@@ -109,15 +156,17 @@
 
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`/api/pdfs/${encodeURIComponent(filename)}`, {
+        const { res, parsed } = await fetchJsonWithFallback(`/api/pdfs/${encodeURIComponent(filename)}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (response.ok) {
+        if (res.ok && parsed.isJson) {
           loadPdfList(); // 重新加载列表
+        } else if (!parsed.isJson) {
+          alert('接口返回非 JSON，请检查后端/代理配置');
         } else {
           alert('删除失败');
         }
@@ -168,7 +217,23 @@
         
         xhr.addEventListener('loadend', async () => {
           if (xhr.status === 200) {
-            const result = JSON.parse(xhr.responseText);
+            let result = null;
+            try {
+              result = JSON.parse(xhr.responseText);
+            } catch {
+              uploadMessage.textContent = '接口返回非 JSON，请检查后端/代理配置';
+              uploadMessage.className = 'mt-4 text-red-500';
+              progressContainer.classList.add('hidden');
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = '上传PDF';
+              return;
+            }
+
+            if (usedFallback) {
+              API_BASE = effectiveBase;
+              localStorage.setItem('api_base', API_BASE);
+            }
+
             uploadMessage.textContent = result.message;
             uploadMessage.className = 'mt-4 text-green-500';
             uploadForm.reset();
@@ -182,7 +247,7 @@
               const error = JSON.parse(xhr.responseText);
               uploadMessage.textContent = error.detail || '上传失败';
             } catch {
-              uploadMessage.textContent = '上传失败';
+              uploadMessage.textContent = '接口返回非 JSON，请检查后端/代理配置';
             }
             uploadMessage.className = 'mt-4 text-red-500';
             progressContainer.classList.add('hidden');
@@ -199,7 +264,10 @@
           uploadBtn.textContent = '上传PDF';
         });
         
-        xhr.open('POST', '/api/upload-pdf');
+        const effectiveBase = API_BASE || guessFallbackBase();
+        const usedFallback = !API_BASE && !!effectiveBase;
+        const uploadUrl = buildApiUrl('/api/upload-pdf', effectiveBase);
+        xhr.open('POST', uploadUrl);
         xhr.send(formData);
         
       } catch (error) {
@@ -223,30 +291,33 @@
       
       const checkProgress = async () => {
         try {
-          const response = await fetch('/api/index-progress', {
+          const { res, parsed } = await fetchJsonWithFallback('/api/index-progress', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
           
-          if (response.ok) {
-            const progress = await response.json();
-            progressBar.style.width = progress.percent + '%';
-            progressText.textContent = `${progress.step}... ${progress.percent}%`;
+            if (res.ok && parsed.isJson) {
+              const progress = parsed.data;
+              progressBar.style.width = progress.percent + '%';
+              progressText.textContent = `${progress.step}... ${progress.percent}%`;
             
-            if (progress.percent < 100) {
-              setTimeout(checkProgress, 1000); // 每秒检查一次
+              if (progress.percent < 100) {
+                setTimeout(checkProgress, 1000); // 每秒检查一次
+              } else {
+                // 完成
+                setTimeout(() => {
+                  progressContainer.classList.add('hidden');
+                  uploadMessage.textContent = '索引生成完成';
+                }, 2000);
+              }
+            } else if (!parsed.isJson) {
+              progressText.textContent = '接口返回非 JSON，请检查后端/代理配置';
+              setTimeout(() => progressContainer.classList.add('hidden'), 2000);
             } else {
-              // 完成
-              setTimeout(() => {
-                progressContainer.classList.add('hidden');
-                uploadMessage.textContent = '索引生成完成';
-              }, 2000);
+              progressText.textContent = '获取进度失败';
+              setTimeout(() => progressContainer.classList.add('hidden'), 2000);
             }
-          } else {
-            progressText.textContent = '获取进度失败';
-            setTimeout(() => progressContainer.classList.add('hidden'), 2000);
-          }
         } catch (error) {
           progressText.textContent = '网络错误';
           setTimeout(() => progressContainer.classList.add('hidden'), 2000);

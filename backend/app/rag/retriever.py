@@ -56,7 +56,7 @@ class Retriever:
         D, I = self.faiss_index.search(qv, self.top_k)
         hits = []
         for score, idx in zip(D[0].tolist(), I[0].tolist()):
-            if idx < 0:
+            if idx < 0 or idx >= len(self.metas):
                 continue
             m = self.metas[idx]
             hits.append({

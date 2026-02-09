@@ -1,6 +1,6 @@
 // pages/chat/index.js
 import { getSessionDetail } from '../../api/session';
-import { streamChat } from '../../api/chat';
+import { streamChat, generateExercise } from '../../api/chat';
 const towxml = require('../../towxml/index.js');
 
 Page({
@@ -15,7 +15,8 @@ Page({
     keyboardHeight: 0,
     loading: true,
     sending: false,
-    pendingSources: null, // 缓存待处理的知识来源
+    generatingExercise: false,
+    exercisedIndices: [],
   },
 
   renderDebounceTimer: null,
@@ -34,17 +35,6 @@ Page({
   onHide() {},
 
   onUnload() {},
-
-  formatSourcesAsMarkdown(sources) {
-    if (!sources || sources.length === 0) return '';
-    const sourcesList = sources
-      .map(source => {
-        const book = source.book.replace(/\.(pdf|txt|doc|docx)$/i, '');
-        return `- ${book} - 第${source.page}页`;
-      })
-      .join('\n');
-    return `📚 **知识来源：**\n${sourcesList}`;
-  },
 
   renderMarkdown(markdown) {
     if (!markdown) return null;
@@ -99,8 +89,18 @@ Page({
       const sessionDetail = await getSessionDetail(this.userId);
       
       // 转换消息格式
-      const messages = (sessionDetail.messages || []).map((msg) => {
-        const sourcesMarkdown = msg.sources ? this.formatSourcesAsMarkdown(msg.sources) : '';
+      const messages = (sessionDetail.messages || []).map((msg, idx) => {
+        // 为助手消息找到对应的用户消息索引
+        let userMsgIndex = null;
+        if(msg.role === 'assistant'){
+          const allMsgs = sessionDetail.messages;
+          for(let i = idx - 1; i >= 0; i--){
+            if(allMsgs[i].role === 'user'){
+              userMsgIndex = i;
+              break;
+            }
+          }
+        }
         return {
           messageId: msg.timestamp,
           from: msg.role === 'user' ? 0 : 1,
@@ -108,15 +108,24 @@ Page({
           contentNodes: msg.role === 'assistant' ? this.renderMarkdown(msg.content) : null,
           time: msg.timestamp * 1000,
           read: true,
-          sourcesMarkdown,
-          sourcesNodes: sourcesMarkdown ? this.renderMarkdown(sourcesMarkdown) : null,
+          userMsgIndex: userMsgIndex,
         };
       });
+
+      // 解析已生成题目的消息索引
+      let exercisedIndices = [];
+      try{
+        const meta = JSON.parse(sessionDetail.meta || '{}');
+        exercisedIndices = meta.exercised_message_indices || [];
+      }catch(e){
+        exercisedIndices = [];
+      }
 
       this.setData({
         userId: sessionDetail.id,
         name: sessionDetail.title,
         messages,
+        exercisedIndices,
         loading: false,
       });
 
@@ -151,6 +160,10 @@ Page({
     
     if (!content.trim()) return;
     if (this.data.sending) return;
+    if (this.data.generatingExercise) {
+      wx.showToast({ title: '正在生成题目，请稍候', icon: 'none', duration: 2000 });
+      return;
+    }
 
     this.setData({ sending: true });
 
@@ -175,16 +188,10 @@ Page({
         'medium',
         (data) => {
           // WebSocket 流式处理
-          if (data.type === 'meta') {
-            // 缓存知识来源
-            this.setData({ 
-              pendingSources: data.sources || []
-            });
-          } else if (data.type === 'delta') {
+          if (data.type === 'delta') {
             // 只更新纯文本，不渲染markdown
             const msgs = this.data.messages;
             let lastMessage = msgs[msgs.length - 1];
-            const pendingSources = this.data.pendingSources;
             const textLength = data.text ? data.text.length : 0;
             
             if (!lastMessage || lastMessage.from === 0) {
@@ -198,11 +205,6 @@ Page({
               };
               
               // 关联知识来源
-              if (pendingSources) {
-                newMessage.sourcesMarkdown = this.formatSourcesAsMarkdown(pendingSources);
-                newMessage.sourcesNodes = newMessage.sourcesMarkdown ? this.renderMarkdown(newMessage.sourcesMarkdown) : null;
-                this.setData({ pendingSources: null });
-              }
               
               msgs.push(newMessage);
               lastMessage = msgs[msgs.length - 1];
@@ -235,6 +237,18 @@ Page({
             }
             this.contentUpdateCount = 0;
             this.updateMessageMarkdown();
+
+            // 为最后一条助手消息标记用户消息索引
+            const msgs = this.data.messages;
+            const lastMsg = msgs[msgs.length - 1];
+            if (lastMsg && lastMsg.from === 1) {
+              // 找到对应的用户消息索引（倒序的前一条用户消息在原消息列表中的位置）
+              // 用户消息是倒数第二条
+              const totalOriginalMsgs = msgs.length; // 本地消息数即对应原列表长度
+              lastMsg.userMsgIndex = totalOriginalMsgs - 2; // 用户消息在原数组中的索引
+              this.setData({ messages: msgs });
+            }
+
             this.setData({ sending: false });
             wx.showToast({
               title: '消息已发送',
@@ -266,5 +280,43 @@ Page({
 
   scrollToBottom() {
     this.setData({ anchor: 'bottom' });
+  },
+
+  async handleGenerateExercise(e) {
+    const messageIndex = e.currentTarget.dataset.msgIndex;
+    
+    if (this.data.exercisedIndices.includes(messageIndex)) {
+      wx.showToast({ title: '您已经生成过题目了', icon: 'none', duration: 2000 });
+      return;
+    }
+    if (this.data.generatingExercise) {
+      wx.showToast({ title: '正在生成题目，请稍候...', icon: 'none', duration: 2000 });
+      return;
+    }
+
+    this.setData({ generatingExercise: true });
+    wx.showLoading({ title: '题目生成中...' });
+
+    try {
+      const res = await generateExercise(this.userId, messageIndex, 'medium');
+      
+      if (res.already_generated) {
+        wx.showToast({ title: '您已经生成过题目了', icon: 'none', duration: 2000 });
+        const indices = [...this.data.exercisedIndices, messageIndex];
+        this.setData({ exercisedIndices: indices });
+        return;
+      }
+
+      if (res.ok) {
+        const indices = [...this.data.exercisedIndices, messageIndex];
+        this.setData({ exercisedIndices: indices });
+        wx.showToast({ title: '题目已生成', icon: 'success', duration: 1500 });
+      }
+    } catch (err) {
+      wx.showToast({ title: '题目生成失败', icon: 'none', duration: 2000 });
+    } finally {
+      this.setData({ generatingExercise: false });
+      wx.hideLoading();
+    }
   },
 });
