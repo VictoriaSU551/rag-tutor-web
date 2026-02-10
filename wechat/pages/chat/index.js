@@ -109,6 +109,8 @@ Page({
           time: msg.timestamp * 1000,
           read: true,
           userMsgIndex: userMsgIndex,
+          sources: msg.sources || [],  // 添加知识来源
+          showExplain: false,  // 是否展开解析
         };
       });
 
@@ -187,9 +189,37 @@ Page({
         content,
         'medium',
         (data) => {
-          // WebSocket 流式处理
+          // JSONL 流式处理
+          
+          // 处理元数据（知识来源）
+          if (data.type === 'meta') {
+            const msgs = this.data.messages;
+            let lastMessage = msgs[msgs.length - 1];
+            
+            if (!lastMessage || lastMessage.from === 0) {
+              // 创建新的助手消息
+              const newMessage = {
+                messageId: Date.now(),
+                from: 1,
+                content: '',
+                time: Date.now(),
+                read: true,
+                sources: data.sources || [],  // 保存知识来源
+                showExplain: false,
+              };
+              
+              msgs.push(newMessage);
+            } else {
+              // 更新最后一条消息的知识来源
+              lastMessage.sources = data.sources || [];
+            }
+            
+            this.setData({ messages: msgs });
+            return;
+          }
+          
           if (data.type === 'delta') {
-            // 只更新纯文本，不渲染markdown
+            // 处理流式文本内容
             const msgs = this.data.messages;
             let lastMessage = msgs[msgs.length - 1];
             const textLength = data.text ? data.text.length : 0;
@@ -202,14 +232,14 @@ Page({
                 content: data.text || '',
                 time: Date.now(),
                 read: true,
+                sources: [],
+                showExplain: false,
               };
-              
-              // 关联知识来源
               
               msgs.push(newMessage);
               lastMessage = msgs[msgs.length - 1];
             } else {
-              // 只追加纯文本
+              // 追加纯文本（此时还没有 markdown 节点）
               lastMessage.content += data.text;
             }
             
@@ -217,7 +247,7 @@ Page({
             this.setData({ messages: msgs });
             wx.nextTick(() => this.scrollToBottom());
             
-            // 检查是否应该进行markdown渲染（每积累50个字符）
+            // 检查是否应该进行markdown渲染（每积累300个字符）
             if (this.shouldRenderMarkdown(textLength)) {
               this.updateMessageMarkdown();
             } else {
@@ -226,10 +256,10 @@ Page({
                 this.updateMessageMarkdownDebounce();
               }
             }
-          } else if (data.type === 'exercise') {
-            // 处理习题（可选）
-            console.log('练习题:', data.data);
-          } else if (data.type === 'done') {
+            return;
+          }
+          
+          if (data.type === 'done') {
             // 流式完成 - 清除防抖定时器，立即渲染最终markdown
             if (this.renderDebounceTimer) {
               clearTimeout(this.renderDebounceTimer);
@@ -242,10 +272,9 @@ Page({
             const msgs = this.data.messages;
             const lastMsg = msgs[msgs.length - 1];
             if (lastMsg && lastMsg.from === 1) {
-              // 找到对应的用户消息索引（倒序的前一条用户消息在原消息列表中的位置）
-              // 用户消息是倒数第二条
-              const totalOriginalMsgs = msgs.length; // 本地消息数即对应原列表长度
-              lastMsg.userMsgIndex = totalOriginalMsgs - 2; // 用户消息在原数组中的索引
+              // 找到对应的用户消息索引
+              const totalOriginalMsgs = msgs.length;
+              lastMsg.userMsgIndex = totalOriginalMsgs - 2;
               this.setData({ messages: msgs });
             }
 
@@ -255,13 +284,23 @@ Page({
               icon: 'success',
               duration: 1000,
             });
-          } else if (data.type === 'error' || data.type === 'exercise_error') {
+            return;
+          }
+          
+          if (data.type === 'error' || data.type === 'exercise_error') {
             console.error('Error:', data.message);
+            wx.showToast({
+              title: '出错: ' + (data.message || '未知错误'),
+              icon: 'none',
+              duration: 2000,
+            });
+            this.setData({ sending: false });
+            return;
           }
         },
         (error) => {
           wx.showToast({
-            title: '发送失败',
+            title: '发送失败: ' + (error.message || '网络错误'),
             icon: 'none',
             duration: 2000,
           });
@@ -280,6 +319,16 @@ Page({
 
   scrollToBottom() {
     this.setData({ anchor: 'bottom' });
+  },
+
+  // 切换解析展示
+  handleToggleExplain(e) {
+    const messageIndex = e.currentTarget.dataset.msgIndex;
+    const msgs = this.data.messages;
+    if (msgs[messageIndex]) {
+      msgs[messageIndex].showExplain = !msgs[messageIndex].showExplain;
+      this.setData({ messages: msgs });
+    }
   },
 
   async handleGenerateExercise(e) {

@@ -28,7 +28,7 @@
     <!-- 题目信息头 -->
     <view class="question-header">
       <view class="question-number">第 {{ index + 1 }} 题</view>
-      <view class="question-type">{{ item.type }}</view>
+      <view class="question-type">{{ item.difficulty }}</view>
     </view>
 
     <!-- 题目文本 -->
@@ -56,7 +56,7 @@
     <view wx:if="{{ item.submitted }}" class="answer-section">
       <view class="answer-result {{ item.userAnswer === item.correctAnswer ? 'correct' : 'incorrect' }}">
         <view class="answer-text">
-          <text>{{ item.userAnswer === item.correctAnswer ? '✓ 正确' : '✕ 答错了，正确答案是 ' + String.fromCharCode(65 + item.correctAnswer) }}</text>
+          <text>{{ item.userAnswer === item.correctAnswer ? '✓ 正确' : '✕ 答错了，正确答案是 ' + (item.correctAnswerDisplay || 'A') }}</text>
         </view>
       </view>
 
@@ -71,10 +71,15 @@
           <text class="expand-icon">{{ item.showAnalysis ? '▲' : '▼' }}</text>
         </view>
 
-        <!-- 解析内容 -->
+        <!-- 解析内容 - 支持 Markdown 渲染 -->
         <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
           <view class="analysis-title">解析</view>
-          <text class="analysis-text">{{ item.analysis }}</text>
+          <view class="analysis-content">
+            <!-- 优先显示 Markdown 渲染的内容 -->
+            <decode wx:if="{{ item.explanationNodes }}" nodes="{{ item.explanationNodes }}" />
+            <!-- 否则显示纯文本 -->
+            <text wx:else class="analysis-text">{{ item.explanation }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -105,31 +110,35 @@
   <view class="quiz-question" wx:for="{{ wrongList }}" wx:key="index">
     <view class="question-header">
       <view class="question-number">错题 {{ index + 1 }}</view>
-      <view class="question-type">{{ item.type }}</view>
+      <view class="question-type">{{ item.difficulty }}</view>
     </view>
 
     <view class="question-text">{{ item.question }}</view>
 
-    <view class="options-list">
+    <!-- 选项列表（如果有的话） -->
+    <view wx:if="{{ item.options && item.options.length > 0 }}" class="options-list">
       <view
         wx:for="{{ item.options }}"
         wx:for-item="option"
         wx:for-index="optionIndex"
         wx:key="optionIndex"
-        class="option-item {{ optionIndex === item.userAnswer ? 'user-answer' : '' }} {{ optionIndex === item.correctAnswer ? 'correct-answer-highlight' : '' }}"
+        class="option-item {{ optionIndex === item.userAnswerIndex ? 'user-answer' : '' }} {{ optionIndex === item.correctAnswerIndex ? 'correct-answer-highlight' : '' }}"
       >
         <view class="option-label"></view>
         <text>{{ option }}</text>
       </view>
     </view>
 
+    <!-- 答案说明 -->
     <view class="answer-section">
       <view class="answer-result incorrect">
         <view class="answer-text">
-          <text>✕ 答错了，正确答案是 {{ String.fromCharCode(65 + item.correctAnswer) }}</text>
+          <text wx:if="{{ item.userAnswerIndex !== null }}">✕ 你的答案：{{ String.fromCharCode(65 + item.userAnswerIndex) }} | 正确答案：{{ item.correctAnswer }}</text>
+          <text wx:else>✕ 正确答案：{{ item.correctAnswer }}</text>
         </view>
       </view>
 
+      <!-- 展开解析按钮 -->
       <view class="expand-section">
         <view
           class="expand-button"
@@ -140,10 +149,27 @@
           <text class="expand-icon">{{ item.showAnalysis ? '▲' : '▼' }}</text>
         </view>
 
+        <!-- 解析内容 - 支持 Markdown 渲染 -->
         <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
           <view class="analysis-title">解析</view>
-          <text class="analysis-text">{{ item.analysis }}</text>
+          <view class="analysis-content">
+            <!-- 优先显示 Markdown 渲染的内容 -->
+            <decode wx:if="{{ item.explanationNodes }}" nodes="{{ item.explanationNodes }}" />
+            <!-- 否则显示纯文本 -->
+            <text wx:else class="analysis-text">{{ item.explanation }}</text>
+          </view>
         </view>
+      </view>
+
+      <!-- 删除按钮 -->
+      <view class="button-group">
+        <button
+          class="delete-btn"
+          bind:tap="deleteWrong"
+          data-question-index="{{ index }}"
+        >
+          删除此题
+        </button>
       </view>
     </view>
 

@@ -1,4 +1,6 @@
 @import '/variable.less';
+@import '../../towxml/towxml.wxss';
+@import '../../towxml/style/main.wxss';
 
 // 绿色主题色板
 @primary-green: #3aa655;
@@ -53,6 +55,8 @@
   min-height: calc(100vh - 112rpx - 60px - 88rpx);
   background: @light-green;
   padding: 20rpx 0;
+  padding-bottom: 200rpx;  // 增加底部空间，防止解析被遮挡
+  overflow-y: auto;
 }
 
 .empty-state {
@@ -360,12 +364,146 @@
   margin-bottom: 12rpx;
 }
 
+.analysis-content {
+  font-size: 23rpx;
+  color: #333333;
+  line-height: 1.7;
+}
+
 .analysis-text {
   font-size: 23rpx;
   color: #333333;
   line-height: 1.7;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Towxml Markdown 渲染样式 for 习题解析 */
+.analysis-content {
+  /* 标题样式 */
+  .h2w h1, .h2w h2, .h2w h3, .h2w h4, .h2w h5, .h2w h6 {
+    color: @primary-green;
+    font-weight: bold;
+    margin: 8rpx 0;
+  }
+
+  .h2w h1 { font-size: 28rpx; margin: 12rpx 0 8rpx 0; }
+  .h2w h2 { font-size: 26rpx; margin: 10rpx 0 8rpx 0; }
+  .h2w h3 { font-size: 24rpx; }
+  .h2w h4 { font-size: 23rpx; }
+  .h2w h5 { font-size: 22rpx; }
+  .h2w h6 { font-size: 21rpx; }
+
+  /* 列表样式 */
+  .h2w ul, .h2w ol {
+    margin: 8rpx 0;
+    padding-left: 24rpx;
+  }
+
+  .h2w li {
+    margin: 4rpx 0;
+    line-height: 1.6;
+  }
+
+  /* 代码块样式 */
+  .h2w pre {
+    background: #f5f5f5;
+    border: 1rpx solid #e0e0e0;
+    border-radius: 6rpx;
+    padding: 12rpx;
+    margin: 8rpx 0;
+    overflow-x: auto;
+    color: #333;
+  }
+
+  .h2w code {
+    background: #f5f5f5;
+    border-radius: 3rpx;
+    padding: 2rpx 6rpx;
+    color: #d63200;
+    font-size: 21rpx;
+  }
+
+  .h2w pre .h2w code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+
+  /* 引用块样式 */
+  .h2w blockquote {
+    border-left: 4rpx solid @primary-green;
+    padding-left: 12rpx;
+    margin: 8rpx 0;
+    color: #666;
+    background: rgba(58, 166, 85, 0.08);
+    padding: 8rpx 12rpx;
+    border-radius: 4rpx;
+  }
+
+  /* 表格样式 */
+  .h2w table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8rpx 0;
+    border: 1rpx solid #d9d9d9;
+  }
+
+  .h2w th, .h2w td {
+    border: 1rpx solid #d9d9d9;
+    padding: 8rpx;
+    text-align: left;
+  }
+
+  .h2w th {
+    background: #f5f5f5;
+    font-weight: bold;
+  }
+
+  /* 链接样式 */
+  .h2w a {
+    color: @primary-green;
+    text-decoration: underline;
+  }
+
+  /* 强调样式 */
+  .h2w strong, .h2w b {
+    font-weight: bold;
+    color: @dark-green;
+  }
+
+  .h2w em, .h2w i {
+    font-style: italic;
+    color: #666;
+  }
+
+  /* 分隔线 */
+  .h2w hr {
+    border: none;
+    border-top: 2rpx solid #e0e0e0;
+    margin: 12rpx 0;
+  }
+
+  /* 段落间距 */
+  .h2w p {
+    margin: 6rpx 0;
+  }
+
+  /* 行内代码和代码块兼容性 */
+  .h2w__code {
+    background-color: #f5f5f5;
+    color: #d63200;
+    border-radius: 3rpx;
+    padding: 2rpx 6rpx;
+  }
+
+  .h2w__pre {
+    background-color: #f5f5f5;
+    border: 1rpx solid #e0e0e0;
+    border-radius: 6rpx;
+    padding: 12rpx;
+    color: #333;
+  }
 }
 
 .button-group {
@@ -395,6 +533,24 @@
     background: @border-green;
     color: #999999;
     cursor: not-allowed;
+  }
+}
+
+.delete-btn {
+  flex: 1;
+  padding: 14rpx 20rpx;
+  background: #ff4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:active {
+    background: #dd2222;
+    opacity: 0.9;
   }
 }
 

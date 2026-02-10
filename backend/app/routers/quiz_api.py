@@ -23,7 +23,7 @@ def save_session_meta(session: models.Session, meta: dict, db: Session):
     db.commit()
 
 @router.get("/quiz/current")
-def quiz_current(token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
+def quiz_current(request: Request, token: str = None, session_id: str = None, db: Session = Depends(get_db)):
     """获取当前会话中的待答题"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -54,7 +54,7 @@ def quiz_current(token: str = None, session_id: str = None, request: Request = N
     }
 
 @router.post("/quiz/answer")
-def quiz_answer(data: QuizAnswerIn, token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
+def quiz_answer(data: QuizAnswerIn, request: Request, token: str = None, session_id: str = None, db: Session = Depends(get_db)):
     """提交练习题答案"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -107,7 +107,7 @@ def quiz_answer(data: QuizAnswerIn, token: str = None, session_id: str = None, r
     }
 
 @router.post("/quiz/add_wrong")
-def add_wrong(data: AddWrongIn, token: str = None, session_id: str = None, request: Request = None, db: Session = Depends(get_db)):
+def add_wrong(data: AddWrongIn, request: Request, token: str = None, session_id: str = None, db: Session = Depends(get_db)):
     """将答错的题目加入错题本（存储在 session.meta 中）"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -149,7 +149,7 @@ def add_wrong(data: AddWrongIn, token: str = None, session_id: str = None, reque
     return {"ok": True}
 
 @router.post("/quiz/add_manual_wrong")
-def add_manual_wrong(data: AddManualWrongIn, token: str = None, request: Request = None, db: Session = Depends(get_db)):
+def add_manual_wrong(data: AddManualWrongIn, request: Request, token: str = None, db: Session = Depends(get_db)):
     """手动将题目加入用户错题本"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -185,7 +185,7 @@ def add_manual_wrong(data: AddManualWrongIn, token: str = None, request: Request
     return {"ok": True}
 
 @router.get("/wrongbook")
-def wrongbook(token: str = None, request: Request = None, db: Session = Depends(get_db)):
+def wrongbook(request: Request, token: str = None, db: Session = Depends(get_db)):
     """获取用户的错题本"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -213,7 +213,7 @@ def wrongbook(token: str = None, request: Request = None, db: Session = Depends(
 
 
 @router.delete("/wrongbook/{index}")
-def delete_wrong_item(token: str = None, index: int = None, request: Request = None, db: Session = Depends(get_db)):
+def delete_wrong_item(index: int, request: Request, token: str = None, db: Session = Depends(get_db)):
     """删除用户错题本中指定索引的题目（前端使用的是 reversed 列表索引）"""
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -249,12 +249,12 @@ def delete_wrong_item(token: str = None, index: int = None, request: Request = N
 
 @router.get("/quiz_questions")
 def list_quiz_questions(
+    request: Request,
     token: str = None,
     session_id: str = None,
     difficulty: str = None,
     page: int = 1,
     page_size: int = 20,
-    request: Request = None,
     db: Session = Depends(get_db),
 ):
     """获取当前用户的所有生成过的题目，支持按 session 和难度筛选，分页"""
@@ -304,7 +304,7 @@ def list_quiz_questions(
 
 
 @router.get("/quiz_questions/{question_id}")
-def get_quiz_question(question_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
+def get_quiz_question(question_id: str, request: Request, token: str = None, db: Session = Depends(get_db)):
     """获取单个题目详情"""
     try:
         auth_header = request.headers.get("Authorization") if request else None
@@ -344,7 +344,7 @@ def get_quiz_question(question_id: str, token: str = None, request: Request = No
 
 
 @router.delete("/quiz_questions/{question_id}")
-def delete_quiz_question(question_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
+def delete_quiz_question(question_id: str, request: Request, token: str = None, db: Session = Depends(get_db)):
     """删除指定题目"""
     try:
         auth_header = request.headers.get("Authorization") if request else None

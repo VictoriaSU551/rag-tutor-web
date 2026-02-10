@@ -37,9 +37,19 @@
               <!-- 优先显示渲染的 markdown，没有则显示纯文本（流式输出） -->
               <decode wx:if="{{ item.contentNodes }}" nodes="{{ item.contentNodes }}" />
               <text wx:else class="streaming-text">{{ item.content }}</text>
-              
             </view>
           </view>
+          
+          <!-- 知识来源显示 -->
+          <view wx:if="{{ item.sources && item.sources.length > 0 }}" class="sources-info">
+            <view class="sources-title">📚 知识来源：</view>
+            <view class="sources-list">
+              <view wx:for="{{ item.sources }}" wx:key="index" class="source-item">
+                <text>{{ item.book }} - 第{{ item.page }}页</text>
+              </view>
+            </view>
+          </view>
+
           <!-- 生成一道题按钮 -->
           <view wx:if="{{ item.userMsgIndex !== null && item.userMsgIndex !== undefined }}" class="gen-exercise-wrap">
             <button 

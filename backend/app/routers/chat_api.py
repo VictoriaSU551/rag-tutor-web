@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -147,9 +147,13 @@ def get_session_detail(session_id: str, token: str = None, request: Request = No
 @router.get("/sessions/{session_id}/chat")
 async def chat_stream(session_id: str, token: str = None, q: str = "", difficulty: str = "medium", request: Request = None, db: Session = Depends(get_db)):
     """
-    流式对话，支持SSE
+    流式对话，返回 JSONL 格式 (每行一个 JSON)，兼容微信小程序
     前端用 GET /api/sessions/{session_id}/chat?token=...&q=...
     或通过 Authorization header
+    返回格式:
+    {"type":"meta","sources":[...]}
+    {"type":"delta","text":"..."}
+    {"type":"done"}
     """
     try:
         # 支持从查询参数或 Authorization header 提取 token
@@ -191,15 +195,15 @@ async def chat_stream(session_id: str, token: str = None, q: str = "", difficult
     async def event_gen():
         # 先发一个"检索结果概览"给前端
         meta = [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
-        yield f"data: {json.dumps({'type':'meta','sources': meta}, ensure_ascii=False)}\n\n"
+        yield json.dumps({'type':'meta','sources': meta}, ensure_ascii=False) + "\n"
 
         full_text = ""
         try:
             async for delta in client.stream_generate(SYSTEM_PROMPT, user_prompt):
                 full_text += delta
-                yield f"data: {json.dumps({'type':'delta','text': delta}, ensure_ascii=False)}\n\n"
+                yield json.dumps({'type':'delta','text': delta}, ensure_ascii=False) + "\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type':'error','message': str(e)}, ensure_ascii=False)}\n\n"
+            yield json.dumps({'type':'error','message': str(e)}, ensure_ascii=False) + "\n"
             return
 
         # 保存助手回复，包含完整的来源信息
@@ -222,9 +226,9 @@ async def chat_stream(session_id: str, token: str = None, q: str = "", difficult
         db.add(session)
         db.commit()
 
-        yield f"data: {json.dumps({'type':'done'}, ensure_ascii=False)}\n\n"
+        yield json.dumps({'type':'done'}, ensure_ascii=False) + "\n"
 
-    return StreamingResponse(event_gen(), media_type="text/event-stream")
+    return StreamingResponse(event_gen(), media_type="text/plain; charset=utf-8")
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: str, token: str = None, request: Request = None, db: Session = Depends(get_db)):
@@ -431,4 +435,122 @@ def generate_title(session_id: str, token: str = None, request: Request = None, 
     db.commit()
     
     return {"title": title, "ok": True}
+
+
+@router.websocket("/ws/chat/{session_id}")
+async def websocket_chat(websocket: WebSocket, session_id: str, token: str = None, q: str = "", difficulty: str = "medium"):
+    """
+    WebSocket 流式对话
+    客户端连接时包含查询参数：?token=xxx&q=xxx&difficulty=medium
+    """
+    try:
+        await websocket.accept()
+    except Exception as e:
+        print(f"WebSocket 接受失败: {e}")
+        await websocket.close(code=1000)
+        return
+    
+    try:
+        # 验证 token
+        if not token:
+            await websocket.send_json({"type": "error", "message": "缺少认证令牌"})
+            await websocket.close(code=1008)
+            return
+        
+        try:
+            uid = parse_token(token)
+        except ValueError as e:
+            await websocket.send_json({"type": "error", "message": "认证失败"})
+            await websocket.close(code=1008)
+            return
+        
+        # 验证问题
+        if not q or not q.strip():
+            await websocket.send_json({"type": "error", "message": "问题不能为空"})
+            await websocket.close(code=1008)
+            return
+        
+        # 获取数据库会话
+        from ..db import SessionLocal
+        db = SessionLocal()
+        
+        try:
+            session = db.query(models.Session).filter(
+                models.Session.id == session_id,
+                models.Session.user_id == uid
+            ).first()
+            
+            if not session:
+                await websocket.send_json({"type": "error", "message": "会话不存在"})
+                await websocket.close(code=1008)
+                return
+            
+            # 加载现有聊天记录
+            chat_messages = json.loads(session.chat or "[]")
+            
+            # 添加用户问题
+            import time
+            user_message = {
+                "role": "user",
+                "content": q.strip(),
+                "timestamp": int(time.time())
+            }
+            chat_messages.append(user_message)
+            
+            # 检索相关文档
+            retriever = get_retriever(uid)
+            contexts = retriever.search(q.strip())
+            
+            # 发送检索结果元数据
+            meta = [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
+            await websocket.send_json({"type": "meta", "sources": meta})
+            
+            # 流式生成回复
+            user_prompt = build_user_prompt(q.strip(), contexts)
+            client = QwenClient()
+            
+            full_text = ""
+            try:
+                async for delta in client.stream_generate(SYSTEM_PROMPT, user_prompt):
+                    full_text += delta
+                    await websocket.send_json({"type": "delta", "text": delta})
+            except Exception as e:
+                await websocket.send_json({"type": "error", "message": f"生成失败: {str(e)}"})
+                await websocket.close(code=1011)
+                return
+            
+            # 保存助手回复
+            assistant_message = {
+                "role": "assistant",
+                "content": full_text,
+                "timestamp": int(time.time()),
+                "sources": [{"book": c["book"], "page": c["page"]} for c in contexts[:settings.TOP_K]]
+            }
+            chat_messages.append(assistant_message)
+            
+            # 更新会话标题（如果是第一条消息）
+            if len(chat_messages) == 2:  # 只有用户问题和助手回复
+                session.title = q.strip()[:30]
+            
+            # 保存更新后的聊天记录
+            session.chat = json.dumps(chat_messages, ensure_ascii=False)
+            db.add(session)
+            db.commit()
+            
+            # 发送完成信号
+            await websocket.send_json({"type": "done"})
+            
+        finally:
+            db.close()
+            
+    except Exception as e:
+        print(f"WebSocket 处理错误: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+        try:
+            await websocket.close(code=1011)
+        except:
+            pass
 
