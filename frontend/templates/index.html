@@ -1157,55 +1157,107 @@ function startStream(question){
   chatArea.scrollTop = 1e9;
   
   let fullText = "";
+  let aborted = false;
   
   const difficulty = document.getElementById("quizDifficulty").value;
   
-  ES = new EventSource(`/api/sessions/${SESSION_ID}/chat?token=${encodeURIComponent(TOKEN)}&q=${encodeURIComponent(question)}&difficulty=${encodeURIComponent(difficulty)}`);
+  // 使用 fetch + JSONL 替代 EventSource，支持 text/plain MIME 类型
+  const url = `/api/sessions/${SESSION_ID}/chat?token=${encodeURIComponent(TOKEN)}&q=${encodeURIComponent(question)}&difficulty=${encodeURIComponent(difficulty)}`;
+  
+  fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+    }
+  })
+    .then(res => res.text())
+    .then(data => {
+      if (!data) {
+        document.getElementById("current-content").innerText += "\n\n[错误] 空响应";
+        return;
+      }
 
-  ES.onmessage = (ev)=>{
-    const msg = JSON.parse(ev.data);
-    if(msg.type === "meta"){
-      const sources = msg.sources;
-      document.getElementById("current-sources").innerHTML = "📚 知识来源：<ul class='source-list'>" + 
-        sources.map(s=>{
-          const bookName = s.book.replace(/\.(pdf|PDF)$/, '');
-          return `<li>${bookName} - 第${s.page}页</li>`;
-        }).join("") + 
-        "</ul>";
-      document.getElementById("current-sources").style.display = "block";
-      return;
-    }
-    if(msg.type === "delta"){
-      fullText += msg.text;
-      const contentEl = document.getElementById("current-content");
-      // 边输出边渲染 Markdown（包含所有扩展语法）
-      const cleanedContent = fullText.replace(/\n{2,}/g, '\n\n');
-      contentEl.innerHTML = marked.parse(cleanedContent);
-      // 渲染数学公式
-      renderMath(contentEl);
-      document.getElementById("chatArea").scrollTop = 1e9;
-      return;
-    }
-    if(msg.type === "error"){
-      const contentEl = document.getElementById("current-content");
-      contentEl.innerText += "\n\n[错误] " + msg.message;
-      ES.close();
-      return;
-    }
-    if(msg.type === "done"){
-      ES.close();
-      document.getElementById("current-message").id = "";
-      loadHistory();
-      loadQuiz();
-      loadSessions();
-      return;
-    }
-  };
+      // 按行分割 JSONL 数据
+      const lines = data.trim().split('\n');
+      let processedCount = 0;
 
-  ES.onerror = ()=>{
-    const contentEl = document.getElementById("current-content");
-    contentEl.innerText += "\n\n[连接中断] 请检查服务器或API配置。";
-    try{ ES.close(); }catch(e){}
+      // 逐行处理 (采用延迟以模拟流式效果)
+      const processLine = (index) => {
+        if (aborted || index >= lines.length) {
+          // 处理完成
+          if (!aborted) {
+            document.getElementById("current-message").id = "";
+            loadHistory();
+            loadQuiz();
+            loadSessions();
+          }
+          return;
+        }
+
+        const line = lines[index];
+        if (line && line.trim()) {
+          try {
+            const msg = JSON.parse(line);
+            
+            if (msg.type === "meta") {
+              const sources = msg.sources;
+              document.getElementById("current-sources").innerHTML = "📚 知识来源：<ul class='source-list'>" + 
+                sources.map(s => {
+                  const bookName = s.book.replace(/\.(pdf|PDF)$/, '');
+                  return `<li>${bookName} - 第${s.page}页</li>`;
+                }).join("") + 
+                "</ul>";
+              document.getElementById("current-sources").style.display = "block";
+            } else if (msg.type === "delta") {
+              fullText += msg.text;
+              const contentEl = document.getElementById("current-content");
+              // 边输出边渲染 Markdown（包含所有扩展语法）
+              const cleanedContent = fullText.replace(/\n{2,}/g, '\n\n');
+              contentEl.innerHTML = marked.parse(cleanedContent);
+              // 渲染数学公式
+              renderMath(contentEl);
+              document.getElementById("chatArea").scrollTop = 1e9;
+            } else if (msg.type === "error") {
+              const contentEl = document.getElementById("current-content");
+              contentEl.innerText += "\n\n[错误] " + msg.message;
+              aborted = true;
+            } else if (msg.type === "done") {
+              // 最终 markdown 渲染
+              const contentEl = document.getElementById("current-content");
+              const cleanedContent = fullText.replace(/\n{2,}/g, '\n\n');
+              contentEl.innerHTML = marked.parse(cleanedContent);
+              renderMath(contentEl);
+              
+              document.getElementById("current-message").id = "";
+              loadHistory();
+              loadQuiz();
+              loadSessions();
+              aborted = true;
+            }
+          } catch (e) {
+            console.error('JSON 解析失败:', line, e);
+          }
+        }
+
+        // 处理下一行 (用 requestAnimationFrame 模拟流式输出效果)
+        if (!aborted) {
+          requestAnimationFrame(() => processLine(index + 1));
+        }
+      };
+
+      processLine(0);
+    })
+    .catch(err => {
+      console.error('请求失败:', err);
+      const contentEl = document.getElementById("current-content");
+      contentEl.innerText += "\n\n[连接中断] " + err.message;
+    });
+
+  // 保持 ES 变量作用域兼容
+  ES = {
+    close: () => {
+      aborted = true;
+    }
   };
 }
 
