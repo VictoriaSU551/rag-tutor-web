@@ -23,7 +23,10 @@ function request(url, method = 'GET', data = {}) {
   }
 
   // 对于 GET 请求，参数应该放在 URL 中
-  let requestUrl = baseUrl + url;
+  // 确保 baseUrl 末尾没有斜杠，url 开头有斜杠，避免双斜杠
+  let normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  let normalizedUrl = url.startsWith('/') ? url : '/' + url;
+  let requestUrl = normalizedBaseUrl + normalizedUrl;
   let requestData = {};
 
   if (method === 'GET' && Object.keys(data).length > 0) {

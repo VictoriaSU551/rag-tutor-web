@@ -5,11 +5,7 @@ import request from './request';
  * @returns {Promise}
  */
 export const me = () => {
-  const token = wx.getStorageSync('access_token');
-  if (!token) {
-    return Promise.reject(new Error('未登录'));
-  }
-  return request('/api/me', 'GET', { token });
+  return request('/api/me', 'GET');
 };
 
 export default {
