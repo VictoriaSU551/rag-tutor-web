@@ -1,0 +1,554 @@
+:root{
+  --orange-weak: #ffd8b5;
+  --orange-border:#ffb377;
+  --bg:#fff8f2;
+}
+html,body,#app{
+  height:100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+body{
+  background: linear-gradient(180deg, var(--bg), #ffffff);
+  /* 移动端安全区域处理 */
+  @supports (padding: max(0px)) {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+}
+/* 安全区域类 */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+}
+/* 移动设备优化 */
+@media (max-width: 768px) {
+  html, body {
+    font-size: 16px; /* 防止iOS自动缩放 */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button, input, textarea, select {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+.chatbox{
+  border: 1.5px solid var(--orange-border);
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+  border-radius: 18px;
+}
+.bubble{
+  border: 1.2px solid var(--orange-weak);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.bubble.assistant{background:#fff7ef;}
+.bubble.user{background:#ffffff;}
+
+/* 对话消息样式 */
+.message-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.message-user {
+  background: linear-gradient(135deg, #fef9f3 0%, #fdf5eb 100%);
+  border: 2px solid #ffb347;
+  border-left: 5px solid #ff8c00;
+}
+
+.message-assistant {
+  background: linear-gradient(135deg, #f8fbfe 0%, #f3f8fd 100%);
+  border: 2px solid #64b5f6;
+  border-left: 5px solid #1976d2;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.role-badge {
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.message-user .role-badge {
+  background: #ff9800;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(255,152,0,0.3);
+}
+
+.message-assistant .role-badge {
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(25,118,210,0.3);
+}
+
+.msg-time {
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.message-content {
+  color: #1a1a1a;
+  line-height: 1.7;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.message-user .message-content {
+  font-weight: 500;
+}
+
+/* Markdown 渲染样式 */
+.message-content h1, .message-content h2, .message-content h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.message-content h1 { font-size: 1.5em; }
+.message-content h2 { font-size: 1.3em; }
+.message-content h3 { font-size: 1.1em; }
+
+.message-content p {
+  margin: 8px 0;
+}
+
+.message-content ul, .message-content ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.message-content li {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.message-content code {
+  background: rgba(0,0,0,0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 12px 0;
+  color: #f8f8f2;
+}
+
+.message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-content blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 12px 0;
+  color: #666;
+  font-style: italic;
+}
+
+.message-content hr {
+  border: none;
+  border-top: 2px solid #ddd;
+  margin: 16px 0;
+}
+
+.message-content a {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+.message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.message-content th, .message-content td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.message-content th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.message-sources {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px dashed #64b5f6;
+  font-size: 12px;
+  color: #333;
+  font-style: italic;
+  background: rgba(144, 202, 249, 0.15);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+}
+
+.source-list li {
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+}
+
+.source-list li:before {
+  content: "▪";
+  position: absolute;
+  left: 0;
+  color: #1976d2;
+  font-weight: bold;
+}
+
+.msg-time {
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: help;
+}
+
+/* ============ 移动响应式设计 ============ */
+@media (max-width: 768px) {
+  /* 全局移动优化 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 按钮和交互元素：更大的点击区域 */
+  button, input, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 头部响应式 */
+  header {
+    gap: 8px !important;
+  }
+
+  header div {
+    font-size: 14px !important;
+  }
+
+  /* 布局容器：移动端选项卡式 */
+  .layout-container {
+    flex-direction: column !important;
+    gap: 0 !important;
+    display: flex !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+  }
+
+  /* 移动端所有面板在桌面端显示，在移动端只显示对话面板 */
+  .layout-section {
+    min-width: auto !important;
+    flex-basis: auto !important;
+  }
+
+  /* 移动端只显示对话区域 */
+  [data-section="sessions"],
+  [data-section="quiz"] {
+    display: none !important;
+  }
+
+  [data-section="chat"] {
+    display: flex !important;
+    flex: 1 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  [data-section="chat"] .section-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+  
+  [data-section="chat"] #chatArea {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 8px !important;
+  }
+
+  .resize-handle {
+    display: none !important;
+  }
+
+  /* 修改分界线样式 */
+  .resize-handle {
+    width: auto !important;
+    height: 4px !important;
+    cursor: row-resize !important;
+  }
+
+  /* 消息内容优化 */
+  .message-content {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .message-content h1 { font-size: 1.3em; }
+  .message-content h2 { font-size: 1.1em; }
+  .message-content h3 { font-size: 1em; }
+
+  .message-content code {
+    font-size: 0.85em;
+  }
+
+  .message-content pre {
+    padding: 10px;
+    font-size: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 输入框响应式 */
+  textarea {
+    font-size: 16px; /* 防止iOS自动缩放 */
+    line-height: 1.5 !important;
+    padding: 8px 12px !important;
+  }
+
+  /* 模态框：全屏显示 */
+  .fixed.inset-0 {
+    padding: 8px !important;
+  }
+
+  .chatbox {
+    max-height: 90vh;
+    border-radius: 12px;
+  }
+  
+  .layout-section.chatbox {
+    height: 100% !important;
+    max-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 弹框内容文本大小 */
+  .chatbox .text-xl {
+    font-size: 18px;
+  }
+
+  .chatbox .text-lg {
+    font-size: 16px;
+  }
+
+  /* 表格响应式 */
+  .message-content table {
+    font-size: 12px;
+    overflow-x: auto;
+  }
+
+  .message-content th, .message-content td {
+    padding: 6px;
+  }
+
+  /* 列表间距 */
+  .message-content ul, .message-content ol {
+    margin: 8px 0 !important;
+    padding-left: 20px !important;
+  }
+
+  .message-content li {
+    margin: 4px 0 !important;
+  }
+
+  /* 按钮样式：移动端优化 */
+  .text-orange-600,
+  .text-orange-700 {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+
+  /* 修复移动端模态框显示 */
+  #wrongModal,
+  #authModal,
+  #knowledgeBaseModal {
+    padding: 8px !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+  }
+
+  #wrongModal > div,
+  #authModal > div,
+  #knowledgeBaseModal > div {
+    max-height: 90vh;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+  }
+
+  /* 错题本模态框 - 竖屏模式下堆叠 */
+  .flex-col.sm\:flex-row {
+    flex-direction: column !important;
+  }
+
+  .flex-1.sm\:flex-1,
+  .flex-\[2\].sm\:flex-\[2\] {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* 隐藏桌面特定文本 */
+  .hidden.md\:block {
+    display: none !important;
+  }
+
+  /* 缩小字体预防溢出 */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  textarea {
+    font-size: 16px !important; /* iOS修复 */
+  }
+
+  /* 削减边距和填充 */
+  .section-header {
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .collapse-btn {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* 移动端隐藏右侧面板按钮 */
+  [data-toggle="quiz"],
+  [data-toggle="sessions"] {
+    display: none !important;
+  }
+}
+
+/* 超小屏幕（<640px）额外优化 */
+@media (max-width: 640px) {
+  .chatbox {
+    border-radius: 12px;
+    padding: 12px !important;
+  }
+
+  .layout-container {
+    padding: 0 !important;
+  }
+
+  header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .section-header {
+    font-size: 14px;
+  }
+
+  /* 进一步减小文本 */
+  .message-content {
+    font-size: 12px;
+  }
+
+  .message-header {
+    gap: 4px !important;
+    font-size: 10px;
+  }
+
+  .role-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  /* 触摸友好的间距 */
+  button {
+    padding: 10px 12px;
+  }
+}
+
+/* 桌面端样式（> 768px） */
+@media (min-width: 769px) {
+  /* 隐藏移动端弹窗按钮 */
+  #btnShowSessions,
+  #btnShowQuiz {
+    display: none !important;
+  }
+
+  /* 所有面板都显示 */
+  .layout-section {
+    display: flex !important;
+  }
+
+  [data-section="sessions"] {
+    flex-basis: 180px;
+  }
+
+  [data-section="quiz"] {
+    flex-basis: 200px;
+  }
+
+  .message-content {
+    font-size: 13px;
+  }
+}
+
+/* 全屏布局与分区滚动 */
+.layout-container {
+  height: 100%;
+}
+
+.layout-section {
+  min-height: 0;
+}
+
+#sessionList,
+#chatArea,
+#quizBox {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+#sessionList::-webkit-scrollbar,
+#chatArea::-webkit-scrollbar,
+#quizBox::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
