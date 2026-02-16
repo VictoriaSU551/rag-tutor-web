@@ -26,6 +26,7 @@ services:
       - TOP_K=${TOP_K}
       - CHUNK_SIZE=${CHUNK_SIZE}
       - CHUNK_OVERLAP=${CHUNK_OVERLAP}
+      - DEBUG_API_DIRECT=${DEBUG_API_DIRECT}
     volumes:
       - backend_data:/app/data
     restart: unless-stopped

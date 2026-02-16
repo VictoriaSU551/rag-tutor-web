@@ -58,20 +58,10 @@
     const uploadForm = document.getElementById('uploadForm');
     const uploadMessage = document.getElementById('uploadMessage');
     const pdfList = document.getElementById('pdfList');
-    let API_BASE = localStorage.getItem('api_base') || 'http://localhost:8002';
+    const API_BASE = '';
 
-    function buildApiUrl(path, base = API_BASE) {
-      const prefix = base ? base.replace(/\/$/, '') : '';
-      return `${prefix}${path}`;
-    }
-
-    function guessFallbackBase() {
-      if (API_BASE) return '';
-      if (window.location.protocol !== 'http:') return '';
-      const host = window.location.hostname;
-      if (!host) return '';
-      if (window.location.port === '8000') return '';
-      return `http://${host}:8000`;
+    function buildApiUrl(path) {
+      return path;
     }
 
     async function parseJsonResponse(res) {
@@ -85,23 +75,8 @@
     }
 
     async function fetchJsonWithFallback(path, options) {
-      let res = await fetch(buildApiUrl(path), options);
-      let parsed = await parseJsonResponse(res);
-
-      if ((!parsed.isJson || res.status >= 500) && !API_BASE) {
-        const fallbackBase = guessFallbackBase();
-        if (fallbackBase) {
-          const retryRes = await fetch(buildApiUrl(path, fallbackBase), options);
-          const retryParsed = await parseJsonResponse(retryRes);
-          res = retryRes;
-          parsed = retryParsed;
-          if (retryParsed.isJson) {
-            API_BASE = fallbackBase;
-            localStorage.setItem('api_base', API_BASE);
-          }
-        }
-      }
-
+      const res = await fetch(buildApiUrl(path), options);
+      const parsed = await parseJsonResponse(res);
       return { res, parsed };
     }
 
@@ -229,11 +204,6 @@
               return;
             }
 
-            if (usedFallback) {
-              API_BASE = effectiveBase;
-              localStorage.setItem('api_base', API_BASE);
-            }
-
             uploadMessage.textContent = result.message;
             uploadMessage.className = 'mt-4 text-green-500';
             uploadForm.reset();
@@ -264,9 +234,7 @@
           uploadBtn.textContent = '上传PDF';
         });
         
-        const effectiveBase = API_BASE || guessFallbackBase();
-        const usedFallback = !API_BASE && !!effectiveBase;
-        const uploadUrl = buildApiUrl('/api/upload-pdf', effectiveBase);
+        const uploadUrl = buildApiUrl('/api/upload-pdf');
         xhr.open('POST', uploadUrl);
         xhr.send(formData);
         
