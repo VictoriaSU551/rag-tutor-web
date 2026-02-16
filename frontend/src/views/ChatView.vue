@@ -531,7 +531,17 @@ onMounted(() => {
       if (SESSION_ID === sessionId) {
         SESSION_ID = '';
         localStorage.removeItem('session_id');
-        await createNewSession();
+        await loadSessions();
+
+        if (SESSIONS.length > 0) {
+          SESSION_ID = SESSIONS[0].id;
+          localStorage.setItem('session_id', SESSION_ID);
+          await loadSessions();
+          await loadHistory();
+          await loadQuiz();
+        } else {
+          await createNewSession();
+        }
       } else {
         await loadSessions();
       }
