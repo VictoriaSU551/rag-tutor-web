@@ -204,3 +204,4 @@ docs/_build/
 
 # 环境特定配置（保留示例文件）
 !.env.example
+docker-compose.image.yml
