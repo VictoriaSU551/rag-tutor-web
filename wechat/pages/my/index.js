@@ -12,21 +12,6 @@ Page({
       star: '未知',
       city: '地球',
     },
-    gridList: [
-      { name: '全部', icon: 'view-list', type: 'all' },
-      { name: '完成', icon: 'check-circle-filled', type: 'done' },
-      { name: '进行中', icon: 'circle', type: 'process' },
-      { name: '暂存', icon: 'bookmark', type: 'save' },
-    ],
-    service: [
-      { name: '成就', image: '/static/chat/avatar.png' },
-      { name: '排行', image: '/static/chat/avatar.png' },
-      { name: '反馈', image: '/static/chat/avatar.png' },
-      { name: '关于', image: '/static/chat/avatar.png' },
-    ],
-    settingList: [
-      { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
-    ],
   },
 
   onLoad() {

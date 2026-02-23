@@ -1,5 +1,5 @@
 // pages/session/index.js
-import { getSessions, createSession, deleteSession } from '../../api/session';
+import { getSessions, createSession, deleteSession, getSessionDetail } from '../../api/session';
 
 Page({
   data: {
@@ -21,6 +21,26 @@ Page({
 
   onUnload() {},
 
+  getAvatarForSession(sessionId) {
+    const avatars = [
+      '/static/avatar1.png',
+      '/static/image1.png',
+      '/static/image2.png',
+      '/static/icon_doc.png',
+      '/static/icon_map.png',
+      '/static/icon_wx.png',
+      '/static/icon_qq.png',
+      '/static/icon_td.png',
+    ];
+    const idStr = String(sessionId || '0');
+    let hash = 0;
+    for (let i = 0; i < idStr.length; i += 1) {
+      hash = (hash * 31 + idStr.charCodeAt(i)) % 100000;
+    }
+    const index = hash % avatars.length;
+    return avatars[index];
+  },
+
   async getMessageList() {
     this.setData({ loading: true });
     try {
@@ -33,20 +53,30 @@ Page({
       }
       
       const sessions = await getSessions();
-      
-      // 格式化会话列表
-      const messageList = sessions.map((session) => ({
-        userId: session.id,
-        name: session.title,
-        avatar: '/static/chat/avatar.png', // 使用默认头像
-        lastMessage: session.title,
-        time: new Date(session.updated_at).getTime(),
-        messages: [],
-      }));
 
-      // 为每条会话的最后一条消息添加格式化时间
-      messageList.forEach((conversation) => {
-        conversation.formattedTime = this.formatUpdateTime(conversation.time);
+      const detailList = await Promise.all(
+        (sessions || []).map(async (session) => {
+          try {
+            const detail = await getSessionDetail(session.id);
+            return { session, detail };
+          } catch (e) {
+            return { session, detail: null };
+          }
+        })
+      );
+
+      const messageList = detailList.map(({ session, detail }) => {
+        const messages = (detail && detail.messages) ? detail.messages : [];
+        const last = this.getLastPreviewMessage(messages);
+        return {
+          userId: session.id,
+          name: session.title,
+          avatar: this.getAvatarForSession(session.id),
+          lastMessage: last || '点击继续对话',
+          time: this.normalizeTimestamp(session.updated_at),
+          messages: [],
+          formattedTime: this.formatUpdateTime(this.normalizeTimestamp(session.updated_at)),
+        };
       });
 
       this.setData({ messageList, loading: false });
@@ -58,6 +88,18 @@ Page({
       });
       this.setData({ loading: false });
     }
+  },
+
+  getLastPreviewMessage(messages) {
+    if (!messages || messages.length === 0) return '';
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const msg = messages[i];
+      if (msg && msg.content) {
+        const text = msg.content.replace(/\s+/g, ' ').trim();
+        return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+      }
+    }
+    return '';
   },
 
   toChat(event) {
@@ -81,6 +123,14 @@ Page({
     return `${date.getMonth() + 1}/${date.getDate()}`;
   },
 
+  normalizeTimestamp(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) {
+      return Date.now();
+    }
+    return num < 1e12 ? num * 1000 : num;
+  },
+
   async addSession() {
     try {
       const newSession = await createSession();
@@ -98,6 +148,38 @@ Page({
   async onSessionLongPress(event) {
     const { userId } = event.currentTarget.dataset;
     
+    wx.showModal({
+      title: '删除会话',
+      content: '确定要删除此会话吗?',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await deleteSession(userId);
+            this.getMessageList();
+            wx.showToast({
+              title: '删除成功',
+              icon: 'success',
+              duration: 1500,
+            });
+          } catch (error) {
+            wx.showToast({
+              title: '删除失败',
+              icon: 'none',
+              duration: 2000,
+            });
+          }
+        }
+      },
+    });
+  },
+
+  // 点击删除按钮
+  onDeleteSessionTap(event) {
+    const { userId } = event.currentTarget.dataset;
+    this.confirmDeleteSession(userId);
+  },
+
+  confirmDeleteSession(userId) {
     wx.showModal({
       title: '删除会话',
       content: '确定要删除此会话吗?',

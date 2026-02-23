@@ -11,13 +11,28 @@
     wx:key="index"
     class="session-item"
     bind:tap="toChat"
+    bind:longpress="onSessionLongPress"
     data-user-id="{{ item.userId }}"
   >
-    <view class="session-header">
-      <view class="session-title">{{ item.name }}</view>
-      <view class="session-time">{{ item.messages[item.messages.length - 1].formattedTime }}</view>
+    <view class="session-avatar">
+      <image src="{{ item.avatar }}" mode="aspectFill" class="session-avatar-img" />
     </view>
-    <view class="session-preview">{{ item.messages[item.messages.length - 1].content }}</view>
+    <view class="session-content">
+      <view class="session-header">
+        <view class="session-title">{{ item.name || '新对话' }}</view>
+        <view class="session-meta">
+          <view class="session-time">{{ item.formattedTime }}</view>
+          <view
+            class="session-delete"
+            data-user-id="{{ item.userId }}"
+            catchtap="onDeleteSessionTap"
+          >
+            ✕
+          </view>
+        </view>
+      </view>
+      <view class="session-preview">{{ item.lastMessage }}</view>
+    </view>
   </view>
 </scroll-view>
 

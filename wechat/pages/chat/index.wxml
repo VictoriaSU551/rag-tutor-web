@@ -38,6 +38,15 @@
               <decode wx:if="{{ item.contentNodes }}" nodes="{{ item.contentNodes }}" />
               <text wx:else class="streaming-text">{{ item.content }}</text>
               
+              <!-- 知识来源（与回答无缝拼接） -->
+              <view wx:if="{{ item.sources && item.sources.length > 0 }}" class="message-sources">
+                <view class="sources-title">📚 知识来源：</view>
+                <view class="source-list">
+                  <view class="source-item" wx:for="{{ item.sources }}" wx:for-item="source" wx:key="index">
+                    <text class="source-text">{{ source.displayBook }} - 第{{ source.page }}页</text>
+                  </view>
+                </view>
+              </view>
             </view>
           </view>
           <!-- 生成一道题按钮 -->

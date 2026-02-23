@@ -10,37 +10,54 @@ page {
 .message-list {
   height: 0;
   flex-grow: 1;
+  background: #f7f8fa;
 }
 
 .session-item {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
   margin: 16rpx 20rpx;
-  padding: 20rpx;
-  background: #fbfbfb;
-  border-radius: 12rpx;
-  border: 3rpx solid #ff7a45;
+  padding: 20rpx 24rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #f0f0f0;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.04);
+  position: relative;
+  padding-right: 24rpx;
 
   &:active {
-    background: #f9f9f9;
-    opacity: 0.8;
+    background: #fafafa;
+    opacity: 0.9;
   }
+}
+
+.session-avatar {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f0f5ff;
+  flex-shrink: 0;
+}
+
+.session-avatar-img {
+  width: 100%;
+  height: 100%;
 }
 
 .session-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 8rpx;
 }
 
-.session-indicator {
-  width: 6rpx;
-  height: 50rpx;
-  background: #ea9134;
-  border-radius: 3rpx;
-  margin-right: 16rpx;
-  opacity: 0.6;
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
 }
 
 .session-content {
@@ -49,24 +66,42 @@ page {
 }
 
 .session-title {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #333333;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .session-preview {
   font-size: 24rpx;
-  color: #00000066;
+  color: #6b7280;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-right: 20rpx;
 }
 
 .session-time {
   font-size: 22rpx;
-  color: #00000066;
+  color: #9ca3af;
   white-space: nowrap;
   margin-left: 16rpx;
+}
+
+.session-delete {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #8c8c8c;
+  border-radius: 50%;
+  font-size: 26rpx;
+  line-height: 1;
+}
+
+.session-delete:active {
+  background: #e6e6e6;
 }
 
 .add-session-button {

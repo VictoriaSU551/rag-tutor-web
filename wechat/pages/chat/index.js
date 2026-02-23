@@ -17,6 +17,7 @@ Page({
     sending: false,
     generatingExercise: false,
     exercisedIndices: [],
+    pendingSources: [],
   },
 
   renderDebounceTimer: null,
@@ -35,6 +36,17 @@ Page({
   onHide() {},
 
   onUnload() {},
+
+  formatSources(sources) {
+    if (!sources || !Array.isArray(sources)) return [];
+    return sources.map((s) => {
+      const bookName = (s.book || '').replace(/\.(pdf|PDF)$/g, '');
+      return {
+        ...s,
+        displayBook: bookName || s.book || '未知文档',
+      };
+    });
+  },
 
   renderMarkdown(markdown) {
     if (!markdown) return null;
@@ -109,6 +121,7 @@ Page({
           time: msg.timestamp * 1000,
           read: true,
           userMsgIndex: userMsgIndex,
+          sources: this.formatSources(msg.sources || []),
         };
       });
 
@@ -180,6 +193,9 @@ Page({
     this.setData({ input: '', messages });
     wx.nextTick(() => this.scrollToBottom());
 
+    // 重置来源
+    this.setData({ pendingSources: [] });
+
     try {
       // 发送到服务器并获取流式回复
       streamChat(
@@ -187,6 +203,17 @@ Page({
         content,
         'medium',
         (data) => {
+          if (data.type === 'meta') {
+            const sources = this.formatSources(data.sources || []);
+            this.setData({ pendingSources: sources });
+            const msgs = this.data.messages;
+            const lastMessage = msgs[msgs.length - 1];
+            if (lastMessage && lastMessage.from === 1 && (!lastMessage.sources || lastMessage.sources.length === 0)) {
+              lastMessage.sources = sources;
+              this.setData({ messages: msgs });
+            }
+            return;
+          }
           // WebSocket 流式处理
           if (data.type === 'delta') {
             // 只更新纯文本，不渲染markdown
@@ -202,6 +229,7 @@ Page({
                 content: data.text || '',
                 time: Date.now(),
                 read: true,
+                sources: this.data.pendingSources || [],
               };
               
               // 关联知识来源
@@ -242,6 +270,9 @@ Page({
             const msgs = this.data.messages;
             const lastMsg = msgs[msgs.length - 1];
             if (lastMsg && lastMsg.from === 1) {
+              if (!lastMsg.sources || lastMsg.sources.length === 0) {
+                lastMsg.sources = this.data.pendingSources || [];
+              }
               // 找到对应的用户消息索引（倒序的前一条用户消息在原消息列表中的位置）
               // 用户消息是倒数第二条
               const totalOriginalMsgs = msgs.length; // 本地消息数即对应原列表长度

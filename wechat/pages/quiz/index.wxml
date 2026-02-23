@@ -45,7 +45,6 @@
         bind:tap="selectAnswer"
         data-question-index="{{ index }}"
         data-option-index="{{ optionIndex }}"
-        data-disabled="{{ item.submitted }}"
       >
         <view class="option-label"></view>
         <text>{{ option }}</text>
@@ -56,8 +55,20 @@
     <view wx:if="{{ item.submitted }}" class="answer-section">
       <view class="answer-result {{ item.userAnswer === item.correctAnswer ? 'correct' : 'incorrect' }}">
         <view class="answer-text">
-          <text>{{ item.userAnswer === item.correctAnswer ? '✓ 正确' : '✕ 答错了，正确答案是 ' + String.fromCharCode(65 + item.correctAnswer) }}</text>
+          <text>{{ item.userAnswer === item.correctAnswer ? '✓ 正确' : '✕ 答错了，正确答案是 ' + (item.correctAnswerLabel || '未知') }}</text>
         </view>
+      </view>
+
+      <!-- 加入错题本 -->
+      <view wx:if="{{ item.userAnswer !== item.correctAnswer }}" class="action-group">
+        <button
+          class="add-wrong-btn"
+          bind:tap="addWrong"
+          data-question-index="{{ index }}"
+          disabled="{{ item.addedToWrong }}"
+        >
+          {{ item.addedToWrong ? '✅ 已加入错题本' : '➕ 加入错题本' }}
+        </button>
       </view>
 
       <!-- 展开解析按钮 -->
@@ -74,7 +85,8 @@
         <!-- 解析内容 -->
         <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
           <view class="analysis-title">解析</view>
-          <text class="analysis-text">{{ item.analysis }}</text>
+          <decode wx:if="{{ item.analysisNodes }}" nodes="{{ item.analysisNodes }}" />
+          <text wx:else class="analysis-text">{{ item.analysis }}</text>
         </view>
       </view>
     </view>
@@ -116,18 +128,31 @@
         wx:for-item="option"
         wx:for-index="optionIndex"
         wx:key="optionIndex"
-        class="option-item {{ optionIndex === item.userAnswer ? 'user-answer' : '' }} {{ optionIndex === item.correctAnswer ? 'correct-answer-highlight' : '' }}"
+        class="option-item {{ optionIndex === item.userAnswer ? 'selected' : '' }} {{ item.submitted && item.userAnswer === optionIndex ? (item.isCorrect ? 'correct' : 'incorrect') : '' }}"
+        bind:tap="selectWrongAnswer"
+        data-question-index="{{ index }}"
+        data-option-index="{{ optionIndex }}"
       >
         <view class="option-label"></view>
         <text>{{ option }}</text>
       </view>
     </view>
 
-    <view class="answer-section">
-      <view class="answer-result incorrect">
+    <view wx:if="{{ item.submitted }}" class="answer-section">
+      <view class="answer-result {{ item.isCorrect ? 'correct' : 'incorrect' }}">
         <view class="answer-text">
-          <text>✕ 答错了，正确答案是 {{ String.fromCharCode(65 + item.correctAnswer) }}</text>
+          <text>{{ item.isCorrect ? '✓ 正确' : '✕ 答错了，正确答案是 ' + (item.correctAnswerLabel || '未知') }}</text>
         </view>
+      </view>
+
+      <view class="action-group">
+        <button
+          class="delete-wrong-btn"
+          bind:tap="deleteWrong"
+          data-question-index="{{ index }}"
+        >
+          🗑 删除错题
+        </button>
       </view>
 
       <view class="expand-section">
@@ -142,15 +167,25 @@
 
         <view wx:if="{{ item.showAnalysis }}" class="analysis-panel">
           <view class="analysis-title">解析</view>
-          <text class="analysis-text">{{ item.analysis }}</text>
+          <decode wx:if="{{ item.analysisNodes }}" nodes="{{ item.analysisNodes }}" />
+          <text wx:else class="analysis-text">{{ item.analysis }}</text>
         </view>
       </view>
+    </view>
+
+    <view class="button-group">
+      <button
+        class="submit-btn"
+        bind:tap="submitWrongAnswer"
+        data-question-index="{{ index }}"
+        disabled="{{ item.userAnswer === null || item.userAnswer === undefined }}"
+      >
+        提交答案
+      </button>
     </view>
 
     <view class="divider"></view>
   </view>
 </scroll-view>
 
-<view class="generate-button" bind:tap="generateQuiz">
-  <view class="button-plus"></view>
-</view>
+<view class="bottom-safe" />

@@ -2,10 +2,12 @@ import {
   getCurrentQuiz, 
   submitQuizAnswer, 
   addWrongQuestion, 
+  addManualWrongQuestion,
   getWrongBook,
   deleteWrongQuestion,
   getQuizQuestions
 } from '../../api/quiz';
+const towxml = require('../../towxml/index.js');
 
 Page({
   data: {
@@ -26,6 +28,19 @@ Page({
     this.loadWrongBook();
   },
 
+  renderMarkdown(markdown) {
+    if (!markdown) return null;
+    try {
+      return towxml(markdown, 'markdown', {
+        theme: 'light',
+        useInline: false
+      });
+    } catch (e) {
+      console.error('Markdown render error:', e);
+      return null;
+    }
+  },
+
   async loadQuizQuestions() {
     try {
       this.setData({ loading: true });
@@ -37,11 +52,16 @@ Page({
         question: item.question,
         options: item.options || [],
         correctAnswer: this.optionToIndex(item.correct_answer, item.options),
+        correctAnswerText: item.correct_answer || '',
+        correctAnswerLabel: this.getAnswerLabel(item.correct_answer, item.options),
         analysis: item.explanation || '暂无解析',
+        analysisNodes: null,
         type: item.difficulty || '中等',
+        difficulty: item.difficulty || '中等',
         userAnswer: null,
         submitted: false,
         showAnalysis: false,
+        addedToWrong: false,
       }));
       this.setData({ quizList, loading: false });
     } catch (error) {
@@ -52,16 +72,39 @@ Page({
 
   // 将答案字母转为选项索引 (A->0, B->1, ...)
   optionToIndex(answer, options) {
-    if (!answer || !options) return 0;
+    if (!answer || !options || options.length === 0) return null;
     const letter = answer.trim().charAt(0).toUpperCase();
     const index = letter.charCodeAt(0) - 65;
-    return (index >= 0 && index < options.length) ? index : 0;
+    return (index >= 0 && index < options.length) ? index : null;
+  },
+
+  getAnswerLabel(answer, options) {
+    if (!answer) return '未知';
+    const trimmed = String(answer).trim();
+    if (options && options.length > 0) {
+      const letter = trimmed.charAt(0).toUpperCase();
+      return letter || '未知';
+    }
+    return trimmed;
   },
 
   async loadWrongBook() {
     try {
       const wrongQuestions = await getWrongBook();
-      this.setData({ wrongList: wrongQuestions, loading: false });
+      const wrongList = (wrongQuestions || []).map(item => ({
+        question: item.question,
+        options: item.options || [],
+        correctAnswer: this.optionToIndex(item.correct_answer, item.options),
+        analysis: item.explanation || '暂无解析',
+        analysisNodes: null,
+        correctAnswerLabel: this.getAnswerLabel(item.correct_answer, item.options),
+        type: item.difficulty || '中等',
+        showAnalysis: false,
+        userAnswer: null,
+        submitted: false,
+        isCorrect: null,
+      }));
+      this.setData({ wrongList, loading: false });
     } catch (error) {
       console.error('获取错题本失败:', error);
       this.setData({ loading: false });
@@ -80,10 +123,7 @@ Page({
   },
 
   selectAnswer(event) {
-    const { questionIndex, optionIndex, disabled } = event.currentTarget.dataset;
-
-    // 如果已提交，不允许修改答案
-    if (disabled) return;
+    const { questionIndex, optionIndex } = event.currentTarget.dataset;
 
     const quizList = this.data.quizList;
     quizList[questionIndex].userAnswer = optionIndex;
@@ -108,7 +148,7 @@ Page({
       }
 
       // 本地判题（题目来自独立题目表，不需要 session）
-      const isCorrect = quiz.userAnswer === quiz.correctAnswer;
+      const isCorrect = quiz.correctAnswer !== null && quiz.userAnswer === quiz.correctAnswer;
 
       if (isCorrect) {
         wx.showToast({
@@ -121,7 +161,7 @@ Page({
         this.setData({ quizList });
       } else {
         quiz.submitted = true;
-        quiz.showAnalysis = true;
+        quiz.showAnalysis = false;
         
         this.setData({ quizList });
         
@@ -142,6 +182,28 @@ Page({
     }
   },
 
+  selectWrongAnswer(event) {
+    const { questionIndex, optionIndex } = event.currentTarget.dataset;
+    const wrongList = this.data.wrongList;
+    wrongList[questionIndex].userAnswer = optionIndex;
+    this.setData({ wrongList });
+  },
+
+  submitWrongAnswer(event) {
+    const { questionIndex } = event.currentTarget.dataset;
+    const wrongList = this.data.wrongList;
+    const item = wrongList[questionIndex];
+
+    if (item.userAnswer === null || item.userAnswer === undefined) {
+      wx.showToast({ title: '请先选择答案', icon: 'none' });
+      return;
+    }
+
+    item.submitted = true;
+    item.isCorrect = item.correctAnswer !== null && item.userAnswer === item.correctAnswer;
+    this.setData({ wrongList });
+  },
+
   async addWrong(event) {
     const { questionIndex } = event.currentTarget.dataset;
     
@@ -149,10 +211,18 @@ Page({
       const quizList = this.data.quizList;
       const quiz = quizList[questionIndex];
 
-      await addWrongQuestion(
-        this.data.selectedSessionId,
-        quiz.userAnswer.toString()
-      );
+      if (quiz.addedToWrong) return;
+
+      await addManualWrongQuestion({
+        question: quiz.question,
+        options: quiz.options,
+        correct_answer: quiz.correctAnswerText,
+        explanation: quiz.analysis,
+        difficulty: quiz.difficulty,
+      });
+
+      quiz.addedToWrong = true;
+      this.setData({ quizList });
 
       wx.showToast({
         title: '已添加到错题本',
@@ -160,7 +230,6 @@ Page({
         duration: 1500,
       });
 
-      this.setData({ quizList });
     } catch (error) {
       wx.showToast({
         title: '添加失败',
@@ -173,14 +242,22 @@ Page({
   toggleAnalysis(event) {
     const { questionIndex } = event.currentTarget.dataset;
     const quizList = this.data.quizList;
-    quizList[questionIndex].showAnalysis = !quizList[questionIndex].showAnalysis;
+    const target = quizList[questionIndex];
+    target.showAnalysis = !target.showAnalysis;
+    if (target.showAnalysis && !target.analysisNodes) {
+      target.analysisNodes = this.renderMarkdown(target.analysis || '暂无解析');
+    }
     this.setData({ quizList });
   },
 
   toggleWrongAnalysis(event) {
     const { questionIndex } = event.currentTarget.dataset;
     const wrongList = this.data.wrongList;
-    wrongList[questionIndex].showAnalysis = !wrongList[questionIndex].showAnalysis;
+    const target = wrongList[questionIndex];
+    target.showAnalysis = !target.showAnalysis;
+    if (target.showAnalysis && !target.analysisNodes) {
+      target.analysisNodes = this.renderMarkdown(target.analysis || '暂无解析');
+    }
     this.setData({ wrongList });
   },
 

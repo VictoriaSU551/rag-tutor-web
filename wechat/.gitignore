@@ -104,7 +104,6 @@ dist
 .tern-port
 
 # Wechat miniprogram
-miniprogram_npm
 
 .idea
 

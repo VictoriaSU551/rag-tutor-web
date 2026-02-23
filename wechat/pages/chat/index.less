@@ -346,3 +346,48 @@
   padding: 8rpx 20rpx;
   color: #999;
 }
+
+/* 知识来源（对齐 Web UI） */
+.message-sources {
+  margin-top: 16rpx;
+  padding: 12rpx 12rpx 12rpx;
+  border-top: 2rpx dashed #64b5f6;
+  font-size: 22rpx;
+  color: #333;
+  font-style: italic;
+  background: rgba(144, 202, 249, 0.12);
+  border-radius: 10rpx;
+}
+
+.sources-title {
+  font-size: 22rpx;
+  color: #333;
+}
+
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 8rpx 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.source-item {
+  padding-left: 16rpx;
+  position: relative;
+}
+
+.source-item::before {
+  content: '▪';
+  position: absolute;
+  left: 0;
+  color: #1976d2;
+  font-weight: bold;
+}
+
+.source-text {
+  font-size: 22rpx;
+  color: #333;
+  line-height: 1.5;
+}

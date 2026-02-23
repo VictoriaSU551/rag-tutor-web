@@ -41,6 +41,19 @@ export const addWrongQuestion = (sessionId, userFirstAnswer) => {
 };
 
 /**
+ * 手动将题目加入错题本（跨会话）
+ * @param {Object} payload 题目内容
+ * @returns {Promise}
+ */
+export const addManualWrongQuestion = (payload) => {
+  const token = wx.getStorageSync('access_token');
+  return request('/api/quiz/add_manual_wrong', 'POST', {
+    token,
+    ...payload,
+  });
+};
+
+/**
  * 获取用户错题本
  * @returns {Promise}
  */
@@ -74,6 +87,7 @@ export default {
   getCurrentQuiz,
   submitQuizAnswer,
   addWrongQuestion,
+  addManualWrongQuestion,
   getWrongBook,
   deleteWrongQuestion,
   getQuizQuestions,

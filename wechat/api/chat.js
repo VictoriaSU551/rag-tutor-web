@@ -2,81 +2,121 @@ import config from '../config/index';
 
 const { baseUrl } = config;
 
+const decodeArrayBuffer = (buffer) => {
+  try {
+    if (typeof TextDecoder !== 'undefined') {
+      return new TextDecoder('utf-8').decode(buffer);
+    }
+  } catch (e) {
+    // fallback
+  }
+  const uint8Array = new Uint8Array(buffer);
+  let result = '';
+  for (let i = 0; i < uint8Array.length; i += 1) {
+    result += String.fromCharCode(uint8Array[i]);
+  }
+  return decodeURIComponent(escape(result));
+};
+
+const parseSseChunk = (chunkText, onMessage) => {
+  if (!chunkText) return;
+  const events = chunkText.split('\n\n');
+  events.forEach((evt) => {
+    const lines = evt.split('\n');
+    const dataLines = lines.filter(line => line.startsWith('data:'));
+    if (dataLines.length === 0) return;
+    const dataText = dataLines.map(line => line.replace(/^data:\s?/, '')).join('\n');
+    if (!dataText) return;
+    try {
+      const data = JSON.parse(dataText);
+      if (onMessage) {
+        onMessage(data);
+      }
+    } catch (e) {
+      console.error('SSE 消息解析失败:', e, 'data:', dataText);
+    }
+  });
+};
+
 /**
- * WebSocket 流式聊天
+ * SSE 流式聊天（HTTPS）
  * 
  * @param {string} sessionId 会话ID
  * @param {string} question 问题
  * @param {string} difficulty 难度level (easy/medium/hard)
  * @param {Function} onMessage 消息回调函数
  * @param {Function} onError 错误回调函数
- * @returns {Object} WebSocket 连接对象
+ * @returns {Object} SSE 连接对象
  */
 export const streamChat = (sessionId, question, difficulty = 'medium', onMessage, onError) => {
   const token = wx.getStorageSync('access_token');
-  
-  // 将 http/https 转换为 ws/wss
-  const wsUrl = baseUrl.replace(/^http/, 'ws');
-  const chatUrl = `${wsUrl}/api/ws/chat/${sessionId}?token=${token}&q=${encodeURIComponent(question)}&difficulty=${difficulty}`;
-  
-  let reconnectAttempts = 0;
-  const maxReconnectAttempts = 3;
-  
-  function connect() {
-    wx.connectSocket({
-      url: chatUrl,
-      success(res) {
-        console.log('WebSocket 连接成功');
-      },
-      fail(err) {
-        console.error('WebSocket 连接失败:', err);
+  const queryParts = [
+    `q=${encodeURIComponent(question)}`,
+    `difficulty=${encodeURIComponent(difficulty)}`,
+  ];
+  if (token) {
+    queryParts.unshift(`token=${encodeURIComponent(token)}`);
+  }
+  const chatUrl = `${baseUrl}/api/sessions/${sessionId}/chat?${queryParts.join('&')}`;
+  let buffer = '';
+  let closed = false;
+
+  const header = {
+    'content-type': 'text/event-stream',
+    'Accept': 'text/event-stream',
+  };
+  if (token) {
+    header.Authorization = `Bearer ${token}`;
+  }
+
+  const requestTask = wx.request({
+    url: chatUrl,
+    method: 'GET',
+    responseType: 'text',
+    enableChunked: true,
+    header,
+    success(res) {
+      if (closed) return;
+      if (res.statusCode !== 200) {
         if (onError) {
-          onError(err);
+          onError(res);
         }
+      } else if (res.data) {
+        parseSseChunk(res.data, onMessage);
       }
-    });
+    },
+    fail(err) {
+      if (closed) return;
+      if (onError) {
+        onError(err);
+      }
+    }
+  });
 
-    // WebSocket 打开事件
-    wx.onSocketOpen(() => {
-      console.log('WebSocket 已打开');
-      reconnectAttempts = 0;
-    });
-
-    // WebSocket 消息事件
-    wx.onSocketMessage((event) => {
+  if (requestTask && requestTask.onChunkReceived) {
+    requestTask.onChunkReceived((res) => {
+      if (closed) return;
       try {
-        const data = JSON.parse(event.data);
-        if (onMessage) {
-          onMessage(data);
+        const chunkText = decodeArrayBuffer(res.data);
+        buffer += chunkText;
+        const lastIndex = buffer.lastIndexOf('\n\n');
+        if (lastIndex !== -1) {
+          const readyText = buffer.slice(0, lastIndex);
+          buffer = buffer.slice(lastIndex + 2);
+          parseSseChunk(readyText, onMessage);
         }
       } catch (e) {
-        console.error('消息解析失败:', e, 'data:', event.data);
+        console.error('SSE 处理失败:', e);
       }
-    });
-
-    // WebSocket 错误事件
-    wx.onSocketError((error) => {
-      console.error('WebSocket 错误:', error);
-      if (onError) {
-        onError(error);
-      }
-    });
-
-    // WebSocket 关闭事件
-    wx.onSocketClose((event) => {
-      console.log('WebSocket 已关闭:', event);
     });
   }
 
-  connect();
-
   return {
     close() {
-      wx.closeSocket({
-        success() {
-          console.log('WebSocket 已关闭');
-        }
-      });
+      closed = true;
+      if (requestTask && requestTask.abort) {
+        requestTask.abort();
+      }
     }
   };
 };

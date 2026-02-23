@@ -1,4 +1,6 @@
 @import '/variable.less';
+@import '../../towxml/towxml.wxss';
+@import '../../towxml/style/main.wxss';
 
 // 绿色主题色板
 @primary-green: #3aa655;
@@ -53,6 +55,7 @@
   min-height: calc(100vh - 112rpx - 60px - 88rpx);
   background: @light-green;
   padding: 20rpx 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 140rpx);
 }
 
 .empty-state {
@@ -368,10 +371,44 @@
   word-wrap: break-word;
 }
 
+/* 解析区 Markdown 样式优化 */
+.analysis-panel .h2w,
+.analysis-panel .h2w__p,
+.analysis-panel .h2w__span {
+  font-size: 23rpx;
+  color: #2f3a4c;
+  line-height: 1.7;
+}
+
+.analysis-panel .h2w__code,
+.analysis-panel .h2w__pre {
+  background-color: #f5f7fa;
+  border-color: #e1e8ed;
+  color: #4a5568;
+}
+
+.analysis-panel .h2w__blockquote {
+  border-left-color: #7fb4f1 !important;
+  background-color: #f8fafe;
+  color: #4a5568;
+}
+
+.analysis-panel .h2w__table,
+.analysis-panel .h2w__th,
+.analysis-panel .h2w__td {
+  border-color: #e2e8f0;
+}
+
 .button-group {
   display: flex;
   gap: 12rpx;
   margin-top: 20rpx;
+}
+
+.action-group {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16rpx;
 }
 
 .submit-btn {
@@ -398,6 +435,46 @@
   }
 }
 
+.add-wrong-btn {
+  padding: 10rpx 20rpx;
+  background: #fff7e6;
+  color: #d46b08;
+  border: 1rpx solid #ffd591;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:active:not(:disabled) {
+    background: #ffe7ba;
+    opacity: 0.95;
+  }
+
+  &:disabled {
+    background: #fff1e6;
+    color: #bfbfbf;
+    cursor: not-allowed;
+  }
+}
+
+.delete-wrong-btn {
+  padding: 10rpx 20rpx;
+  background: #fff1f0;
+  color: #cf1322;
+  border: 1rpx solid #ffa39e;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:active {
+    background: #ffccc7;
+    opacity: 0.95;
+  }
+}
+
 .divider {
   height: 0;
   margin: 20rpx -24rpx -24rpx -24rpx;
@@ -408,68 +485,9 @@
   display: none;
 }
 
-.generate-button {
-  position: fixed;
-  bottom: 240rpx;
-  right: 50rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96rpx;
-  height: 96rpx;
-  background: @button-green;
-  border-radius: 50%;
-  box-shadow: 0 4rpx 12rpx rgba(82, 196, 26, 0.3);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 10;
 
-  &:active {
-    background: @dark-green;
-    box-shadow: 0 6rpx 16rpx rgba(82, 196, 26, 0.4);
-    transform: scale(0.95);
-  }
-}
-
-.button-icon {
-  font-size: 56rpx;
-  color: #ffffff;
-  font-weight: bold;
-  line-height: 1;
-  position: relative;
-  top: 2rpx;
-}
-
-.button-plus {
-  position: relative;
-  width: 48rpx;
-  height: 48rpx;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 7rpx;
-    height: 36rpx;
-    background: #ffffff;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 36rpx;
-    height: 7rpx;
-    background: #ffffff;
-  }
-}
-
-.generate-button text {
-  display: none;
+.bottom-safe {
+  height: calc(env(safe-area-inset-bottom) + 140rpx);
 }
 
 @keyframes slideDown {
