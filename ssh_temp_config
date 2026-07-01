@@ -1,0 +1,6 @@
+Host temp-ssh
+  HostName 8.153.94.220
+  User ubuntu
+  StrictHostKeyChecking no
+  UserKnownHostsFile NUL
+  LogLevel VERBOSE

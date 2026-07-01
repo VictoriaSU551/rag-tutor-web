@@ -3,7 +3,10 @@
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rag-tutor-web-backend:local
     container_name: rag-tutor-backend
     ports:
       - "8000:8000"
@@ -11,7 +14,7 @@ services:
       - DATABASE_URL=sqlite:////app/data/app.db
       - PYTHONUNBUFFERED=1
       - APP_ENV=${APP_ENV}
-      - APP_HOST=${APP_HOST}
+      - APP_HOST=${APP_HOST}s
       - APP_PORT=${APP_PORT}
       - BASE_URL=${BASE_URL}
       - JWT_SECRET=${JWT_SECRET}
@@ -38,7 +41,10 @@ services:
       retries: 3
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: rag-tutor-web-frontend:local
     container_name: rag-tutor-frontend
     ports:
       - "8002:80"

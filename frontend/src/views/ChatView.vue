@@ -2,7 +2,7 @@
   <div class="h-full flex flex-col px-4 py-3">
     <header class="flex items-center justify-between gap-4 mb-3">
       <div>
-        <div class="text-2xl font-semibold">道道的智能学习助手</div>
+        <div class="text-2xl font-semibold">OS 智学助手</div>
         <div class="text-sm text-gray-500">今日的努力，是明日的花开！祝您学习愉快！</div>
       </div>
       <div class="flex items-center gap-3">
